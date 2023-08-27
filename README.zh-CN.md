@@ -16,7 +16,28 @@ wei: /wei
 wei-updater: /data/wei-updater
 wei-transmission: /data/wei-transmission
 ````
-- [ ] 根据build.dat,更新
+- [ ] 根据build.dat,执行以下操作
+````
+#create version.dat, write version: 0.1.2
+mv version.dat ~/work/wei-dist/linux/0.1.2/version.dat
+
+cd ~/work/wei-dist
+git pull
+
+cd ~/work/wei
+git pull
+docker run -it --rm -v ~/work/wei:/data -w zuiyue-com/rust:ubuntu cargo build --release
+cp -rfp ~/work/wei/target/release/wei ~/work/wei-dist/linux/0.1.2/wei
+
+cd ~/work/wei-updater
+git pull
+docker run -it --rm -v ~/work/wei-updater:/data -w zuiyue-com/rust:ubuntu cargo build --release
+cp -rfp ~/work/wei-updater/target/release/wei-updater ~/work/wei-dist/linux/0.1.2/data/wei-updater
+
+# 读取 https://cf.trackerslist.com/best.txt 使用 -t http://tracker.skyts.net:6969/announce -t http://tracker.tfile.co:80/announce -t http://v6-tracker.0g.cx:6969/announce -t http://www.all4nothin.net:80/announce.php 加入多个 tracker
+
+transmission-create -o ~/work/wei-dist/0.1.2.torrent -t http://tracker.skyts.net:6969/announce -t http://tracker.tfile.co:80/announce -t http://v6-tracker.0g.cx:6969/announce -t http://www.all4nothin.net:80/announce.php -s 2048 ~/work/wei-dist/linux/0.1.2 -c wei_0.1.2
+````
 
 # 示例
 
