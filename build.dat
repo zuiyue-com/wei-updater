@@ -1,3 +1,5 @@
 wei: /wei
 wei-updater: /data/wei-updater
 wei-transmission: /data/wei-transmission
+wei-sd: /data/wei-sd
+wei-task: /data/wei-task

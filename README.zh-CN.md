@@ -1,22 +1,21 @@
 # wei-updater
 
-- [ ] 当前目录加载udpate.dat,获取线上路径
-- [ ] 读取当前系统版本，区分windows,mac,ubuntu
-- [ ] 自动对比远程服务器上面的版本号
+- [ ] 当前目录加载./version.dat或者./data/version.dat,对比线上版本
+- [x] 读取当前系统版本，区分windows,mac,ubuntu
 - [ ] 使用transmission下载数据
-- [ ] 下载完成后，自动解压文件
+- [ ] 下载完成后，写入 .wei/status.dat 2 重启所有daemon
 - [ ] 读取编写好的version.dat并自动完成更新到线上布署
 
 # updater 打包本地程序
 
-- [ ] 读取当前系统版本，区分windows,mac,ubuntu
-- [ ] 读取要打包的项目build.dat,下面为示例
+- [x] 读取当前系统版本，区分windows,mac,ubuntu
+- [x] 读取要打包的项目build.dat,下面为示例
 ````
 wei: /wei
 wei-updater: /data/wei-updater
 wei-transmission: /data/wei-transmission
 ````
-- [ ] 根据build.dat,执行以下操作
+- [x] 根据build.dat,执行以下操作
 ````
 #create version.dat, write version: 0.1.2
 mv version.dat ~/work/wei-dist/linux/0.1.2/version.dat
@@ -56,7 +55,7 @@ http://updater.zuiyue.com/                     # 服务器根目录
 /windows/version.dat                           # 最新版本号 version: 0.1.2
 /windows/0.1.2.torrent
 /windows/0.1.2/wei.exe
-/windows/0.1.2/version.dat                     # 最新版本号 version: 0.1.2
+/windows/0.1.2/data/version.dat                # 最新版本号 version: 0.1.2
 /windows/0.1.2/data/wei-updater.exe
 /windows/0.1.2/data/wei-transmission.exe
 
@@ -67,6 +66,7 @@ http://updater.zuiyue.com/                     # 服务器根目录
 /ubuntu/version.dat                            # 最新版本号
 /ubuntu/0.1.3.torrent
 /ubuntu/0.1.3/wei
+/ubuntu/0.1.3/data/version.dat
 /ubuntu/0.1.3/data/wei-updater
 /ubuntu/0.1.3/data/wei-transmission
 ````
