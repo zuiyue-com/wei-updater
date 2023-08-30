@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn build() -> Result<(), Box<dyn std::error::Error>> {
     // update trackers
-    let response = reqwest::get("https://cf.trackerslist.com/best.txt").await?;
+    let response = reqwest::get("https://gitea.com/XIU2/TrackersListCollection/raw/branch/master/all.txt").await?;
     let trackers = response.text().await?;
 
     let os = match std::env::consts::OS {
@@ -85,14 +85,11 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         cmd.arg(tracker.trim());
     });
     cmd.arg("-s");
-    cmd.arg("2048");
+    cmd.arg("8192");
     cmd.arg(format!("../wei-release/{}/{}", os.clone(), version.clone()));
     cmd.arg("-c");
     cmd.arg("wei_".to_owned() + version);
     cmd.current_dir("../wei-release");
-    
-    // 输出执行的所有命令和参数
-    println!("!!! cmd: {:?}", cmd);
 
     // 显示结果    
     let output = cmd.output().unwrap();
