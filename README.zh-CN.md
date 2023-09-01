@@ -1,8 +1,8 @@
 # wei-updater
 
-- [ ] 当前目录加载./version.dat或者./data/version.dat,对比线上版本
+- [ ] 当前目录加载./version.dat,对比线上版本
 - [x] 读取当前系统版本，区分windows,mac,ubuntu
-- [ ] 使用transmission下载数据
+- [ ] 使用qbittorrent下载数据
 - [ ] 下载完成后，写入 .wei/status.dat 2 重启所有daemon
 - [ ] 读取编写好的version.dat并自动完成更新到线上布署
 
