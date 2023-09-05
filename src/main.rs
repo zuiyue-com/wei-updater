@@ -176,35 +176,18 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let new = "new/".to_owned() + online_version.as_str();
 
     copy_files(new, "..".to_string()).expect("Failed to copy files");
+    
+    // 完成所有操作，重新执行wei.exe
     if cfg!(target_os = "windows") {
         run_exe("../wei.exe");
     } else {
         run_exe("../wei");
     }
     
-    // 完成所有操作，重新执行wei.exe
-
-    // wei.exe 获取版本号，获取md5列表，获取文件列表，以上不对应，则从版本号目录中复制文件到当前目录
-    // 如果复制的文件和md5不对应，则直接从服务器上面下载文件
-    // 如果不存在md5列表，则直接从服务器上面下载文件
-    // wei-updater.exe 应该把所有曾经release过的版本都放到wei-release对应的系统下面
-    // wei-run.exe 也是做同样的操作，如果所有路径都找不到，则从服务器上面下载文件
-
-    // wei.exe 会在运行的时候检测基础文件，如果有缺少的文件，则会自动下载最新版本的
-    // 他会首先找new目录下面的最新的版本进行对比，如果有就复制过来。
-    // 如果什么都没有，则从远程对应系统里面的latest下载所有最新的文件和应用程序。
-    // 核心目标是只有一个程序也能把其它程序下载全。
-
-    // 读取编写好的version.dat并自动完成更新到线上布署
-
     Ok(())
 }
 
 async fn build() -> Result<(), Box<dyn std::error::Error>> {
-    // update trackers
-    // let response = reqwest::get("https://gitea.com/XIU2/TrackersListCollection/raw/branch/master/all.txt").await?;
-    // let trackers = response.text().await?;
-
     let os = match std::env::consts::OS {
         "windows" => "windows",
         "macos" => "macos",
