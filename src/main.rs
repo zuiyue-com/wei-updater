@@ -15,16 +15,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     };
 
-    let path = std::env::current_dir()?;
-    let target_path = Path::new("./src/main.rs");
-    if target_path.exists() {
-        let path = path.join("test/data");
-        if !path.exists() {
-            fs::create_dir_all(&path)?;
-        }
-        std::env::set_current_dir(&path)?;
-    } 
-
     let args: Vec<String> = std::env::args().collect();
 
     let mut command = "";
@@ -37,6 +27,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             build().await?;
         },
         _ => {
+            let path = std::env::current_dir()?;
+            let target_path = Path::new("./src/main.rs");
+            if target_path.exists() {
+                let path = path.join("test/data");
+                if !path.exists() {
+                    fs::create_dir_all(&path)?;
+                }
+                std::env::set_current_dir(&path)?;
+            } 
             run().await?;
         }
     }
@@ -226,7 +225,7 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
     let dest_file = format!("../wei-release/{}/version.dat", os);
     fs::copy(src, &dest_file).unwrap();
 
-    let content = std::fs::read_to_string("../../build.dat")?;
+    let content = std::fs::read_to_string("./build.dat")?;
     let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
 
     if let serde_yaml::Value::Mapping(m) = map.clone() {
@@ -256,25 +255,17 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // let mut cmd = std::process::Command::new("./transmission/transmission-create");
-    // cmd.arg("-o");
-    // cmd.arg(format!("../wei-release/{}/{}.torrent", os.clone(), version.clone()));
-    // trackers.lines().filter(|line| !line.trim().is_empty()).for_each(|tracker| {
-    //     cmd.arg("-t");
-    //     cmd.arg(tracker.trim());
-    // });
-    // cmd.arg("-s");
-    // cmd.arg("8192");
-    // cmd.arg(format!("../wei-release/{}/{}", os.clone(), version.clone()));
-    // cmd.arg("-c");
-    // cmd.arg("wei_".to_owned() + version);
-    // cmd.current_dir("../wei-release");
+    let checksum_dir = std::path::PathBuf::from(format!("../wei-release/{}/{}", os.clone(), version.clone()));
+    let mut checksum_file = File::create(format!("../wei-release/{}/{}/data/checksum.dat", os.clone(), version.clone()))?;
+    let from = format!("../wei-release/{}/qbittorrent", os.clone());
+    let to = format!("../wei-release/{}/{}/data/qbittorrent", os.clone(), version.clone());
+    copy_files(from, to).expect("Failed to copy files");
+    write_checksums(&checksum_dir, &mut checksum_file, &checksum_dir).expect("Failed to write checksums");
 
-    // 显示结果    
-    // let output = cmd.output().unwrap();
-    // println!("status: {}", output.status);
-    // println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    // println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    let from = format!("../wei-release/{}/{}", os.clone(), version.clone());
+    let to = format!("../wei-release/{}/latest", os.clone());
+    copy_files(from, to).expect("Failed to copy files");
+    
 
     // git update
     let mut cmd = std::process::Command::new("git");
@@ -353,4 +344,39 @@ fn run_exe<P: AsRef<Path>>(exe_path: P) {
     Command::new(exe_path.as_ref())
         .spawn()
         .expect("Failed to run the exe");
+}
+
+
+use std::fs::{File};
+use std::io::{Write, Read};
+use sha2::{Sha256, Digest};
+
+fn calculate_sha256<P: AsRef<Path>>(file_path: P) -> io::Result<String> {
+    let mut file = File::open(file_path.as_ref())?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(buffer);
+    let hash = hasher.finalize();
+    Ok(format!("{:x}", hash))
+}
+
+fn write_checksums<P: AsRef<Path>>(dir: P
+    , checksum_file: &mut File, prefix: &Path) -> io::Result<()> {
+    let dir = dir.as_ref();
+
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            let relative_path = path.strip_prefix(prefix).unwrap().to_path_buf();
+            let sha256 = calculate_sha256(&path)?;
+            writeln!(checksum_file, "{}|||{}", relative_path.display(), sha256)?;
+        } else if path.is_dir() {
+            write_checksums(&path, checksum_file, prefix)?;
+        }
+    }
+
+    Ok(())
 }

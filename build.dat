@@ -1,7 +1,2 @@
 wei: /wei
 wei-updater: /data/wei-updater
-wei-qbittorrent: /data/wei-qbittorrent
-wei-ui: /data/wei-ui
-wei-tray: /data/wei-tray
-wei-sd: /data/wei-sd
-wei-task: /data/wei-task

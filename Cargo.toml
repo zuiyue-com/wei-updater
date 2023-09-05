@@ -16,3 +16,4 @@ tokio = { version = "1.28", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 single-instance = "0.3"
 winrt-notification = "0.5.1"
+sha2 = "0.10.7"
