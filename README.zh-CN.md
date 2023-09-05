@@ -1,10 +1,19 @@
 # wei-updater
 
-- [ ] 当前目录加载./version.dat,对比线上版本
+- [x] 当前目录加载./version.dat,对比线上版本
 - [x] 读取当前系统版本，区分windows,mac,ubuntu
-- [ ] 使用qbittorrent下载数据
+- [x] 使用qbittorrent下载数据
+- [ ] 处理qbittorrent状态
+````
+三种状态处理： 正常，异常，停止
+正常： 不处理
+异常： 删除种子，再次下载
+停止： 开启
+````
+
 - [ ] 下载完成后，写入 .wei/status.dat 2 重启所有daemon
 - [ ] 读取编写好的version.dat并自动完成更新到线上布署
+- [ ] 清理旧版本的种子文件
 
 # updater 打包本地程序
 
