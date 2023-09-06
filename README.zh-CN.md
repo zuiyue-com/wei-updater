@@ -1,5 +1,30 @@
 # wei-updater
 
+# 更新版本指南
+
+- 需要修改下面几个文件，程序会根据以下文件进行自动打包到../wei-release/os/version/目录
+- version.dat：版本号，对应 wei 项目的版本号
+- build.dat：需要打包的项目，使用yml格式，key值为项目名称，value为打包路径
+```
+wei: /wei
+wei-ui: /data/wei-ui
+wei-tray: /data/wei-tray
+wei-updater: /data/wei-updater
+wei-task: /data/wei-task
+wei-qbittorrent: /data/wei-qbittorrent
+wei-sd: /data/wei-sd
+```
+- daemon.dat：需要自动守护的进程名字，使用yml格式，key值为项目名称，value对应key值即可
+```
+wei-ui: wei-ui
+wei-tray: wei-tray
+wei-updater: wei-updater
+wei-task: wei-task
+wei-qbittorrent: wei-qbittorrent
+```
+
+# 功能开发
+
 - [x] 当前目录加载./version.dat,对比线上版本
 - [x] 读取当前系统版本，区分windows,mac,ubuntu
 - [x] 使用qbittorrent下载数据

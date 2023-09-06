@@ -238,18 +238,32 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // copy wei.ico
+    std::fs::copy(
+        format!("../wei/res/wei.ico"),
+        format!("../wei-release/{}/{}/data/wei.ico", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
+    // copy daemon.dat
+    std::fs::copy(
+        format!("./daemon.dat"),
+        format!("../wei-release/{}/{}/data/daemon.dat", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
+    // copy qbittorrent
+    copy_files(
+        format!("../wei-release/{}/qbittorrent", os.clone()),
+        format!("../wei-release/{}/{}/data/qbittorrent", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
     let checksum_dir = std::path::PathBuf::from(format!("../wei-release/{}/{}", os.clone(), version.clone()));
     let mut checksum_file = File::create(format!("../wei-release/{}/{}/data/checksum.dat", os.clone(), version.clone()))?;
-    let from = format!("../wei-release/{}/qbittorrent", os.clone());
-    let to = format!("../wei-release/{}/{}/data/qbittorrent", os.clone(), version.clone());
-    copy_files(from, to).expect("Failed to copy files");
     write_checksums(&checksum_dir, &mut checksum_file, &checksum_dir).expect("Failed to write checksums");
 
     let from = format!("../wei-release/{}/{}", os.clone(), version.clone());
     let to = format!("../wei-release/{}/latest", os.clone());
     copy_files(from, to).expect("Failed to copy files");
     
-
     // git update
     let mut cmd = std::process::Command::new("git");
     cmd.arg("add");
