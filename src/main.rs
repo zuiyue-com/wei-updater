@@ -195,9 +195,17 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         _ => "ubuntu"
     };
 
-    let version = std::fs::read_to_string("./version.dat").unwrap();
-    let version = version.trim();
+    let contents = fs::read_to_string("../wei/Cargo.toml")
+        .expect("Something went wrong reading the file");
 
+    let value = contents.parse::<toml::Value>().unwrap();
+    let package = value["package"].clone();
+    let version = package["version"].to_string();
+
+    // 写入 version.dat
+    let mut file = File::create("./version.dat")?;
+    file.write_all(version.as_bytes())?;
+    
     let src = "./version.dat";
     let dest_dir = format!("../wei-release/{}/{}/data", os.clone(), version.clone());
     let dest_file = format!("../wei-release/{}/{}/data/version.dat", os.clone(), version.clone());

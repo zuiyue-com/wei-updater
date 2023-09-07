@@ -3,6 +3,7 @@
 # 更新版本指南
 
 - 需要修改下面几个文件，程序会根据以下文件进行自动打包到../wei-release/os/version/目录
+- 修改git设置：git config --global core.autocrlf false
 - version.dat：版本号，对应 wei 项目的版本号
 - build.dat：需要打包的项目，使用yml格式，key值为项目名称，value为打包路径
 ```
