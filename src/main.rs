@@ -27,15 +27,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             build().await?;
         },
         _ => {
-            let path = std::env::current_dir()?;
-            let target_path = Path::new("./src/main.rs");
-            if target_path.exists() {
-                let path = path.join("test/data");
-                if !path.exists() {
-                    fs::create_dir_all(&path)?;
-                }
-                std::env::set_current_dir(&path)?;
-            } 
+            // let path = std::env::current_dir()?;
+            // let target_path = Path::new("./src/main.rs");
+            // if target_path.exists() {
+            //     let path = path.join("test/data");
+            //     if !path.exists() {
+            //         fs::create_dir_all(&path)?;
+            //     }
+            //     std::env::set_current_dir(&path)?;
+            // } 
             run().await?;
         }
     }
@@ -52,11 +52,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let online_version = reqwest::get(&url).await?.text().await?;
     
     if online_version == local_version {
-        println!("No new version");
+        info!("No new version");
         return Ok(());
     }
+    
+    info!("new version: {}", online_version);
 
     let torrent = format!("http://download.zuiyue.com/{}/{}.torrent", os, online_version);
+    info!("torrent: {}", torrent);
 
     // 使用qbittorrent下载数据
     let path = std::env::current_dir()?.join("new");
@@ -64,6 +67,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(&path)?;
     }
     
+    info!("add torrent to qbittorrent");
     wei_run::run(
         "wei-qbittorrent", 
         vec![
@@ -77,7 +81,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut times_error = 0;
     loop {
         // tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-
+        info!("loop check list");
         let cmd = wei_run::run(
             "wei-qbittorrent", 
             vec![
@@ -101,10 +105,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         let v = &v["data"];
 
-        if v["progress"].as_str().unwrap() == "1" {
+        info!("progress: {:?}", v);
+
+        if v["progress"].as_f64().unwrap() == 1.0 {
             finished = true;
         }
-
 
         // 出现 pausedDL | pausedUP 状态，需要重新开启下载
         let state = v["state"].as_str().unwrap();
@@ -120,7 +125,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 ]
             )?;
 
-            println!("set hash location: {}", path.display().to_string());
+            info!("set hash location: {}", path.display().to_string());
         }
 
         match state {
@@ -153,7 +158,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
-    println!("Download finished");
+    info!("Download finished");
     // 下载完成后，写入 .wei/status.dat 0 重启所有daemon
     // 不能设置状态为 2，因为wei-updater.exe 如果没有在后续操作把状态设置为 0，那么wei.exe就会无法开启
     wei_env::stop();
@@ -188,24 +193,27 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn build() -> Result<(), Box<dyn std::error::Error>> {
+    let response = reqwest::get("https://gitea.com/XIU2/TrackersListCollection/raw/branch/master/all.txt").await?;
+    let trackers = response.text().await?;
+
     let os = match std::env::consts::OS {
         "windows" => "windows",
         "macos" => "macos",
         "linux" => "ubuntu",
         _ => "ubuntu"
     };
-
+    
     let contents = fs::read_to_string("../wei/Cargo.toml")
         .expect("Something went wrong reading the file");
 
     let value = contents.parse::<toml::Value>().unwrap();
     let package = value["package"].clone();
-    let version = package["version"].to_string();
-
+    let version = package["version"].to_string().replace("\"", "");
+    
     // 写入 version.dat
     let mut file = File::create("./version.dat")?;
     file.write_all(version.as_bytes())?;
-    
+    println!("version:{}", version);
     let src = "./version.dat";
     let dest_dir = format!("../wei-release/{}/{}/data", os.clone(), version.clone());
     let dest_file = format!("../wei-release/{}/{}/data/version.dat", os.clone(), version.clone());
@@ -271,6 +279,25 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
     let from = format!("../wei-release/{}/{}", os.clone(), version.clone());
     let to = format!("../wei-release/{}/latest", os.clone());
     copy_files(from, to).expect("Failed to copy files");
+
+    // make torrent
+    let mut cmd = std::process::Command::new("../wei-release/windows/transmission/transmission-create");
+    cmd.arg("-o");
+    cmd.arg(format!("../wei-release/{}/{}.torrent", os.clone(), version.clone()));
+    trackers.lines().filter(|line| !line.trim().is_empty()).for_each(|tracker| {
+        cmd.arg("-t");
+        cmd.arg(tracker.trim());
+    });
+    cmd.arg("-s");
+    cmd.arg("8192");
+    cmd.arg(format!("../wei-release/{}/{}", os.clone(), version.clone()));
+    cmd.arg("-c");
+    cmd.arg(version.clone());
+    cmd.current_dir("../wei-release");
+    let output = cmd.output().unwrap();
+    println!("status: {}", output.status);
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     
     // git update
     let mut cmd = std::process::Command::new("git");
@@ -312,9 +339,9 @@ fn check_process(exclude: &str) {
         };
 
         if !output.stdout.is_empty() {
-            println!("Process exists. Waiting...");
+            info!("Process exists. Waiting...");
         } else {
-            println!("Process not found. Exiting...");
+            info!("Process not found. Exiting...");
             break;
         }
         std::thread::sleep(std::time::Duration::from_secs(10));

@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 wei-run = "0.1.9"
 wei-env = "0.2.10"
-wei-log = "0.2.3"
+wei-log = "0.2.5"
 wei-daemon = "0.2.5"
 toml = "0.7"
 serde_yaml = "0.9"
