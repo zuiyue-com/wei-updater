@@ -2,6 +2,7 @@
 
 # 更新版本指南
 
+- 打包完的项目要提交给微软：https://www.microsoft.com/en-us/wdsi/filesubmission
 - 需要修改下面几个文件，程序会根据以下文件进行自动打包到../wei-release/os/version/目录
 - 修改git设置：git config --global core.autocrlf false
 - version.dat：版本号，对应 wei 项目的版本号

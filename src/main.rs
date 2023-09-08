@@ -180,17 +180,25 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // 复制new / online-version 到当前目录
     let new = "new/".to_owned() + online_version.as_str();
 
+    info!("copy new file to main dir");
     copy_files(new, "..".to_string()).expect("Failed to copy files");
     
     // 完成所有操作，重新执行wei.exe
-    if cfg!(target_os = "windows") {
-        run_exe("../wei.exe");
-    } else {
-        run_exe("../wei");
-    }
+    // if cfg!(target_os = "windows") {
+    //     run_exe("../wei.exe");
+    // } else {
+    //     run_exe("../wei");
+    // }
+    wei_run::run("wei",vec![]);
     
     Ok(())
 }
+
+// fn run_exe<P: AsRef<Path>>(exe_path: P) {
+//     Command::new(exe_path.as_ref())
+//         .spawn()
+//         .expect("Failed to run the exe");
+// }
 
 async fn build() -> Result<(), Box<dyn std::error::Error>> {
     let response = reqwest::get("https://gitea.com/XIU2/TrackersListCollection/raw/branch/master/all.txt").await?;
@@ -371,13 +379,6 @@ fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
 
     Ok(())
 }
-
-fn run_exe<P: AsRef<Path>>(exe_path: P) {
-    Command::new(exe_path.as_ref())
-        .spawn()
-        .expect("Failed to run the exe");
-}
-
 
 use std::fs::{File};
 use std::io::{Write, Read};
