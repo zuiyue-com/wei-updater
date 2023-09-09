@@ -183,17 +183,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     info!("copy new file to main dir");
     copy_files(new, "..".to_string()).expect("Failed to copy files");
     
-    
-    // wei_run::run("wei",vec![])?;
+    wei_run::command_async("../wei", vec![])?;
     
     Ok(())
 }
-
-// fn run_exe<P: AsRef<Path>>(exe_path: P) {
-//     Command::new(exe_path.as_ref())
-//         .spawn()
-//         .expect("Failed to run the exe");
-// }
 
 async fn build() -> Result<(), Box<dyn std::error::Error>> {
     let response = reqwest::get("https://gitea.com/XIU2/TrackersListCollection/raw/branch/master/all.txt").await?;
