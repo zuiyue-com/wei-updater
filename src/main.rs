@@ -35,18 +35,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    // 当前目录加载./version.dat,对比线上版本
     let os = std::env::consts::OS;
     let url = format!("http://download.zuiyue.com/{}/version.dat", os);
     let local_version = fs::read_to_string("./version.dat").unwrap();
-    // 使用reqwest获取线上版本
+    let mut online_version;
 
     loop {
         if wei_env::status() == "0" {
             return Ok(());
         }
 
-        let online_version = reqwest::get(&url).await?.text().await?;
+        online_version = reqwest::get(&url).await?.text().await?;
     
         if online_version == local_version {
             info!("No new version");
