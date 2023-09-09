@@ -27,15 +27,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             build().await?;
         },
         _ => {
-            // let path = std::env::current_dir()?;
-            // let target_path = Path::new("./src/main.rs");
-            // if target_path.exists() {
-            //     let path = path.join("test/data");
-            //     if !path.exists() {
-            //         fs::create_dir_all(&path)?;
-            //     }
-            //     std::env::set_current_dir(&path)?;
-            // } 
             run().await?;
         }
     }
@@ -49,12 +40,24 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("http://download.zuiyue.com/{}/version.dat", os);
     let local_version = fs::read_to_string("./version.dat").unwrap();
     // 使用reqwest获取线上版本
-    let online_version = reqwest::get(&url).await?.text().await?;
+
+    loop {
+        if wei_env::status() == "0" {
+            return Ok(());
+        }
+
+        let online_version = reqwest::get(&url).await?.text().await?;
     
-    if online_version == local_version {
-        info!("No new version");
-        return Ok(());
+        if online_version == local_version {
+            info!("No new version");
+        } else {
+            break;
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
+
+
     
     info!("new version: {}", online_version);
 
@@ -79,6 +82,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // 检查数据是否下载完毕, 错误次过多，直接退出
     let mut times_error = 0;
+    let mut hashes;
     loop {
         // tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
         info!("loop check list");
@@ -104,6 +108,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let v = &v["data"];
+        hashes = v["hash"].as_str().unwrap().to_owned().clone();
 
         info!("progress: {:?}", v);
 
@@ -158,10 +163,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
-    info!("Download finished");
+    info!("Download finished.");
     // 下载完成后，写入 .wei/status.dat 0 重启所有daemon
-    // 不能设置状态为 2，因为wei-updater.exe 如果没有在后续操作把状态设置为 0，那么wei.exe就会无法开启
     wei_env::stop();
+
+    wei_run::run(
+        "wei-qbittorrent", 
+        vec![
+            "recheck".to_owned(),
+            hashes
+        ]
+    )?;
 
     // 升级期间要有一个提示框提示用户，正在升级。
     if os == "windows" {
@@ -173,17 +185,31 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .duration(Duration::Short).show()?;
     }
 
-    wei_run::kill("wei")?;
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
     // 从当前 online-version 目录中，复制所有文件到当前目录
     check_process("wei-updater");
-    // 复制new / online-version 到当前目录
-    let new = "new/".to_owned() + online_version.as_str();
-
-    info!("copy new file to main dir");
-    copy_files(new, "..".to_string()).expect("Failed to copy files");
     
-    wei_run::command_async("../wei", vec![])?;
+    // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
+    let content = std::fs::read_to_string("./kill.dat")?;
+    let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
+    if let serde_yaml::Value::Mapping(m) = map.clone() {
+        for (k, _) in m {
+            let name = k.as_str().unwrap();
+            info!("kill: {}", name);
+            wei_run::kill(name).unwrap();
+        }
+    }
+
+    // 复制new / online-version 到当前目录
+    info!("copy new file to main dir");
+    let new = "new/".to_owned() + online_version.as_str();
+    copy_files(new, "..".to_string()).expect("Failed to copy files");
+        
+    // 打印工作目录
+    std::env::set_current_dir("../")?;
+    wei_run::run_async("wei", vec![])?;
+
+    info!("updater success!");
     
     Ok(())
 }
@@ -260,6 +286,12 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::copy(
         format!("./daemon.dat"),
         format!("../wei-release/{}/{}/data/daemon.dat", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
+    // copy daemon.dat
+    std::fs::copy(
+        format!("./kill.dat"),
+        format!("../wei-release/{}/{}/data/kill.dat", os.clone(), version.clone())
     ).expect("Failed to copy files");
 
     // copy qbittorrent
@@ -344,7 +376,6 @@ fn check_process(exclude: &str) {
     }
 }
 
-
 use std::io;
 
 fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
@@ -352,14 +383,24 @@ fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
     let to = to.as_ref();
     
     if !to.exists() {
-        fs::create_dir_all(&to)?;
+        match fs::create_dir_all(&to) {
+            Ok(_) => {},
+            Err(e) => {
+                error!("create dir error: {}", e);
+            }
+        }
     }
 
     for entry in fs::read_dir(from)? {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
-            fs::copy(&path, to.join(path.file_name().unwrap()))?;
+            match fs::copy(&path, to.join(path.file_name().unwrap())) {
+                Ok(_) => {},
+                Err(e) => {
+                    info!("copy file error: {}", e);                    
+                }
+            }
         } else if path.is_dir() {
             copy_files(&path, &to.join(path.file_name().unwrap()))?;
         }

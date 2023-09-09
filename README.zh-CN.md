@@ -2,7 +2,8 @@
 
 # 更新版本指南
 
-- 打包完的项目要提交给微软：https://www.microsoft.com/en-us/wdsi/filesubmission
+- [ ] 打包完的项目要自动提交给微软：https://www.microsoft.com/en-us/wdsi/filesubmission
+- 如果有新增daemon非wei-相关的项目，需要在kill.dat里面添加，格式为yml，key为项目名称，value为进程名称
 - 需要修改下面几个文件，程序会根据以下文件进行自动打包到../wei-release/os/version/目录
 - 修改git设置：git config --global core.autocrlf false
 - version.dat：版本号，对应 wei 项目的版本号
@@ -18,11 +19,11 @@ wei-sd: /data/wei-sd
 ```
 - daemon.dat：需要自动守护的进程名字，使用yml格式，key值为项目名称，value对应key值即可
 ```
-wei-ui: wei-ui
-wei-tray: wei-tray
-wei-updater: wei-updater
-wei-task: wei-task
-wei-qbittorrent: wei-qbittorrent
+wei-ui: 1
+wei-tray: 1
+wei-updater: 1
+wei-task: 1
+wei-qbittorrent: 1
 ```
 
 # 功能开发

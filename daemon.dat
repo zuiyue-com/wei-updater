@@ -1,5 +1,5 @@
-wei-task: wei-task
-wei-ui: wei-ui
-wei-tray: wei-tray
-wei-updater: wei-updater
-wei-qbittorrent: wei-qbittorrent
+wei-task: 1
+wei-ui: 1
+wei-tray: 1
+wei-updater: 1
+wei-qbittorrent: 1
