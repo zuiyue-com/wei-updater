@@ -173,7 +173,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .duration(Duration::Short).show()?;
     }
 
-    // 等待wei.exe关闭
+    wei_run::kill("wei")?;
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
     // 从当前 online-version 目录中，复制所有文件到当前目录
     check_process("wei-updater");
@@ -183,13 +183,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     info!("copy new file to main dir");
     copy_files(new, "..".to_string()).expect("Failed to copy files");
     
-    // 完成所有操作，重新执行wei.exe
-    // if cfg!(target_os = "windows") {
-    //     run_exe("../wei.exe");
-    // } else {
-    //     run_exe("../wei");
-    // }
-    wei_run::run("wei",vec![]);
+    
+    // wei_run::run("wei",vec![])?;
     
     Ok(())
 }
