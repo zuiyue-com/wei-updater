@@ -8,7 +8,7 @@ homepage = "https://github.com/zuiyue-com/wei-updater"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-wei-run = "0.1.22"
+wei-run = "0.1.23"
 wei-env = "0.2.10"
 wei-log = "0.2.5"
 wei-daemon = "0.2.5"
