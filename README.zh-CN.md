@@ -34,6 +34,7 @@ wei-qbittorrent: 1
 - [x] 处理qbittorrent状态
 - [x] 下载完成后，写入 .wei/status.dat 0 重启所有daemon
 - [ ] 清理旧版本的种子文件
+- [ ] 混合下载，使用qbittorrent和http同时下载更新文件
 
 # updater 打包本地程序
 
