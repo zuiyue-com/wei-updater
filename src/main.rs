@@ -323,6 +323,12 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         format!("../wei-release/{}/{}/data/qbittorrent", os.clone(), version.clone())
     ).expect("Failed to copy files");
 
+    // copy dist to wei-ui/dist
+    copy_files(
+        format!("../wei-release/{}/{}/data/dist", os.clone()),
+        format!("../wei-ui/dist", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
     let checksum_dir = std::path::PathBuf::from(format!("../wei-release/{}/{}", os.clone(), version.clone()));
     let mut checksum_file = File::create(format!("../wei-release/{}/{}/data/checksum.dat", os.clone(), version.clone()))?;
     write_checksums(&checksum_dir, &mut checksum_file, &checksum_dir).expect("Failed to write checksums");
