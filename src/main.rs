@@ -275,10 +275,34 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // 如果../wei-ui-vue文件件存在，则打包wei-ui-vue
+    if Path::new("../wei-ui-vue").exists() {
+        let mut cmd = std::process::Command::new("git");
+        cmd.arg("pull");
+        cmd.current_dir("../wei-ui-vue");
+        cmd.output().unwrap();
+
+        let mut cmd = std::process::Command::new("C:/Program Files (x86)/Yarn/bin/yarn.cmd");
+        cmd.arg("run");
+        cmd.arg("build");
+        cmd.current_dir("../wei-ui-vue");
+        cmd.output().unwrap();
+
+        let src = "../wei-ui-vue/dist";
+        let dest_file = format!("../wei-release/{}/{}/data/dist", os.clone(), version.clone());
+        copy_files(src, &dest_file).expect("Failed to copy files");
+    }
+    
     // copy wei.ico
     std::fs::copy(
         format!("../wei/res/wei.ico"),
         format!("../wei-release/{}/{}/data/wei.ico", os.clone(), version.clone())
+    ).expect("Failed to copy files");
+
+    // copy wei.ico
+    std::fs::copy(
+        format!("../wei/res/wei.png"),
+        format!("../wei-release/{}/{}/data/wei.png", os.clone(), version.clone())
     ).expect("Failed to copy files");
 
     // copy daemon.dat
