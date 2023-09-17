@@ -1,5 +1,9 @@
 # wei-updater
 
+# 安装
+
+- 第一次安装的时候要执行trust.ps1,把工作目录加入到微信信任列表
+
 # 更新版本指南
 
 - [ ] 打包完的项目要自动提交给微软：https://www.microsoft.com/en-us/wdsi/filesubmission
