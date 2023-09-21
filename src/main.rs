@@ -325,8 +325,8 @@ async fn build() -> Result<(), Box<dyn std::error::Error>> {
 
     // copy dist to wei-ui/dist
     copy_files(
-        format!("../wei-release/{}/{}/data/dist", os.clone()),
-        format!("../wei-ui/dist", os.clone(), version.clone())
+        format!("../wei-release/{}/{}/data/dist", os.clone(), version.clone()),
+        format!("../wei-ui/dist")
     ).expect("Failed to copy files");
 
     let checksum_dir = std::path::PathBuf::from(format!("../wei-release/{}/{}", os.clone(), version.clone()));
