@@ -32,7 +32,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let product = product_dat.trim();
 
     let url = format!("{}{}/{}/version.dat", download_url, product, os);
-    info!(url);
+    info!("{}", url);
     let local_version = fs::read_to_string("./version.dat").unwrap();
     let mut online_version;
 
