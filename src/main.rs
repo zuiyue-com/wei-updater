@@ -22,7 +22,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let os = std::env::consts::OS;
-    let url = format!("http://download.zuiyue.com/{}/version.dat", os);
+
+    let download_dat_path = format!("download.dat");
+    let download_dat = fs::read_to_string(&download_dat_path).expect("Something went wrong reading the file");
+    let download_url = download_dat.trim();
+
+    let product_dat_path = format!("product.dat");
+    let product_dat = fs::read_to_string(&product_dat_path).expect("Something went wrong reading the file");
+    let product = product_dat.trim();
+
+    let url = format!("{}{}/{}/version.dat", download_url, product, os);
+    info!(url);
     let local_version = fs::read_to_string("./version.dat").unwrap();
     let mut online_version;
 
@@ -42,11 +52,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 
-
-    
     info!("new version: {}", online_version);
 
-    let torrent = format!("http://download.zuiyue.com/{}/{}.torrent", os, online_version);
+    let torrent = format!("{}{}{}/{}.torrent", download_url, product, os, online_version);
     info!("torrent: {}", torrent);
 
     // 使用qbittorrent下载数据
