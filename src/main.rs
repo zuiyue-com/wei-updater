@@ -38,6 +38,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if wei_env::status() == "0" {
+            kill().await?;
             return Ok(());
         }
 
@@ -181,17 +182,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
     // 从当前 online-version 目录中，复制所有文件到当前目录
     check_process("wei-updater");
-    
-    // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
-    let content = std::fs::read_to_string("./kill.dat")?;
-    let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
-    if let serde_yaml::Value::Mapping(m) = map.clone() {
-        for (k, _) in m {
-            let name = k.as_str().unwrap();
-            info!("kill: {}", name);
-            wei_run::kill(name).unwrap();
-        }
-    }
+
+    kill().await?;
 
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
@@ -204,6 +196,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("updater success!");
     
+    Ok(())
+}
+
+async fn kill() -> Result<(), Box<dyn std::error::Error>> {
+    // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
+    let content = std::fs::read_to_string("./kill.dat")?;
+    let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
+    if let serde_yaml::Value::Mapping(m) = map.clone() {
+        for (k, _) in m {
+            let name = k.as_str().unwrap();
+            info!("kill: {}", name);
+            wei_run::kill(name).unwrap();
+        }
+    }
     Ok(())
 }
 
