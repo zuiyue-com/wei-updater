@@ -55,7 +55,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("new version: {}", online_version);
 
-    let torrent = format!("{}{}{}/{}.torrent", download_url, product, os, online_version);
+    let torrent = format!("{}{}/{}/{}.torrent", download_url, product, os, online_version);
     info!("torrent: {}", torrent);
 
     // 使用qbittorrent下载数据
