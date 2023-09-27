@@ -11,12 +11,23 @@ license = "MIT OR Apache-2.0"
 wei-run = "0.1.23"
 wei-env = "0.2.10"
 wei-log = "0.2.5"
-wei-daemon = "0.2.5"
-toml = "0.7"
 serde_yaml = "0.9"
 serde_json = "1"
 tokio = { version = "1.28", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 single-instance = "0.3"
-winrt-notification = "0.5.1"
-sha2 = "0.10.7"
+# winrt-notification = "0.5.1"
+# sha2 = "0.10.7"
+
+[profile.release]
+opt-level = 'z'
+
+[package.metadata.winres]
+OriginalFilename = "WEI-UPDATER.EXE"
+LegalCopyright = "Copyright © 2023 ZUIYUE.COM"
+FileDescription = "WEI UPDATER"
+ProductName = "WEI" 
+ProductVersion = "0.1.1"
+
+[package.metadata.windows]
+subsystem = "windows"
