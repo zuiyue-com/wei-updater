@@ -179,11 +179,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .duration(Duration::Short).show()?;
     }
 
+    kill().await?;
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
     // 从当前 online-version 目录中，复制所有文件到当前目录
     check_process("wei-updater");
-
-    kill().await?;
 
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
