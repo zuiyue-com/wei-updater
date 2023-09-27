@@ -170,14 +170,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // 升级期间要有一个提示框提示用户，正在升级。
-    // if os == "windows" {
-    //     use winrt_notification::{Duration, Sound, Toast};
-    //     Toast::new(Toast::POWERSHELL_APP_ID)
-    //     .title("Wei")
-    //     .text1("新版本已成功下载并正在进行更新，请避免重启软件。")
-    //     .sound(Some(Sound::SMS))
-    //     .duration(Duration::Short).show()?;
-    // }
+    if os == "windows" {
+        use winrt_notification::{Duration, Sound, Toast};
+        Toast::new(Toast::POWERSHELL_APP_ID)
+        .title("Wei")
+        .text1("新版本已成功下载并正在进行更新，请避免重启软件。")
+        .sound(Some(Sound::SMS))
+        .duration(Duration::Short).show()?;
+    }
 
     kill().await?;
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
