@@ -174,15 +174,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         use winrt_notification::{Duration, Sound, Toast};
         Toast::new(Toast::POWERSHELL_APP_ID)
         .title("Wei")
-        .text1("新版本已成功下载并正在进行更新，请避免重启软件。")
+        .text1("新版本已成功下载并正在进行更新，请避免重启软件。更新完毕，软件会自动重启。")
         .sound(Some(Sound::SMS))
         .duration(Duration::Short).show()?;
     }
 
+    // 关闭所有进程，除了wei-updater
     kill().await?;
-    // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
-    // 从当前 online-version 目录中，复制所有文件到当前目录
-    // check_process("wei-updater");
+    // 等待wei-task关闭，才进一步操作
+    loop {
+        if wei_env::task_status == "0" {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
 
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
