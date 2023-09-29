@@ -182,7 +182,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     kill().await?;
     // 等待所有wei-*.exe关闭, 除了 wei-updater.exe 不关闭
     // 从当前 online-version 目录中，复制所有文件到当前目录
-    check_process("wei-updater");
+    // check_process("wei-updater");
 
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
@@ -212,31 +212,31 @@ async fn kill() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn check_process(exclude: &str) {
-    loop {
-        let output = if cfg!(target_os = "windows") {
-            Command::new("powershell")
-                .arg("-Command")
-                .arg(format!("Get-Process | Where-Object {{ ($_.Name -like '*wei*' -or $_.Name -like '*wei-*') -and $_.Name -notlike '*{}*' }}", exclude))
-                .output()
-                .expect("Failed to execute command")
-        } else {
-            Command::new("bash")
-                .arg("-c")
-                .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
-                .output()
-                .expect("Failed to execute command")
-        };
+// fn check_process(exclude: &str) {
+//     loop {
+//         let output = if cfg!(target_os = "windows") {
+//             Command::new("powershell")
+//                 .arg("-Command")
+//                 .arg(format!("Get-Process | Where-Object {{ ($_.Name -like '*wei*' -or $_.Name -like '*wei-*') -and $_.Name -notlike '*{}*' }}", exclude))
+//                 .output()
+//                 .expect("Failed to execute command")
+//         } else {
+//             Command::new("bash")
+//                 .arg("-c")
+//                 .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
+//                 .output()
+//                 .expect("Failed to execute command")
+//         };
 
-        if !output.stdout.is_empty() {
-            info!("Process exists. Waiting...");
-        } else {
-            info!("Process not found. Exiting...");
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_secs(10));
-    }
-}
+//         if !output.stdout.is_empty() {
+//             info!("Process exists. Waiting...");
+//         } else {
+//             info!("Process not found. Exiting...");
+//             break;
+//         }
+//         std::thread::sleep(std::time::Duration::from_secs(10));
+//     }
+// }
 
 use std::io;
 fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
