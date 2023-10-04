@@ -68,9 +68,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     wei_run::run(
         "wei-qbittorrent", 
         vec![
-            "add".to_owned(),
-            torrent,
-            path.display().to_string()
+            "add",
+            torrent.as_str(),
+            path.display().to_string().as_str()
         ]
     )?;
 
@@ -83,8 +83,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let cmd = wei_run::run(
             "wei-qbittorrent", 
             vec![
-                "list".to_owned(),
-                online_version.clone()
+                "list",
+                online_version.clone().as_str()
             ]
         )?;
 
@@ -118,9 +118,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             wei_run::run(
                 "wei-qbittorrent", 
                 vec![
-                    "set-location".to_owned(),
-                    v["hash"].as_str().unwrap().to_owned(),
-                    path.display().to_string()
+                    "set-location",
+                    v["hash"].as_str().unwrap(),
+                    path.display().to_string().as_str()
                 ]
             )?;
 
@@ -132,8 +132,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 wei_run::run(
                     "wei-qbittorrent", 
                     vec![
-                        "resume".to_owned(),
-                        v["hash"].as_str().unwrap().to_owned()
+                        "resume",
+                        v["hash"].as_str().unwrap()
                     ]
                 )?;
             },
@@ -141,8 +141,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 wei_run::run(
                     "wei-qbittorrent", 
                     vec![
-                        "del".to_owned(),
-                        v["hash"].as_str().unwrap().to_owned()
+                        "del",
+                        v["hash"].as_str().unwrap()
                     ]
                 )?;
                 break;
@@ -164,8 +164,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     wei_run::run(
         "wei-qbittorrent", 
         vec![
-            "recheck".to_owned(),
-            hashes
+            "recheck",
+            hashes.as_str()
         ]
     )?;
 
