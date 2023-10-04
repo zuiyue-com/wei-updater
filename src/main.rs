@@ -38,6 +38,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if wei_env::status() == "0" {
+            #[cfg(target_os = "windows")]
+            daemon_close();
+
             kill().await?;
             return Ok(());
         }
@@ -180,10 +183,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 关闭所有进程，除了wei-updater
+    #[cfg(target_os = "windows")]
+    daemon_close();
+
     kill().await?;
     // 等待wei-task关闭，才进一步操作
     loop {
-        if wei_env::task_status == "0" {
+        if wei_env::task_status() == "0" {
             break;
         }
         std::thread::sleep(std::time::Duration::from_secs(10));
@@ -201,6 +207,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     info!("updater success!");
     
     Ok(())
+}
+
+fn daemon_close() {
+    let script_path = "wei-daemon-close.ps1";
+
+    let output = std::process::Command::new("powershell")
+        .arg("-ExecutionPolicy")
+        .arg("Bypass")
+        .arg("-File")
+        .arg(script_path)
+        .output().unwrap();
+
+    if output.status.success() {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        info!("{}", output_str);
+    }
 }
 
 async fn kill() -> Result<(), Box<dyn std::error::Error>> {
