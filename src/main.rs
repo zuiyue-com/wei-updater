@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 use serde_yaml::Value;
 // use std::process::Command;
 
@@ -208,6 +207,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
@@ -260,8 +260,10 @@ async fn kill() -> Result<(), Box<dyn std::error::Error>> {
 //     }
 // }
 
-use std::io;
+#[cfg(not(target_os = "windows"))]
 fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
+    use std::io;
+    use std::path::Path;
     let from = from.as_ref();
     let to = to.as_ref();
     
