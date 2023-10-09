@@ -179,16 +179,36 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .duration(Duration::Short).show()?;
     }
 
-    // 关闭所有进程，除了wei-updater
+    // 关闭kill.dat里面的进程
     kill().await?;
     // 等待wei-task关闭，才进一步操作
     loop {
         if wei_env::task_status() == "0" {
             break;
         }
+        info!("wait wei-task close, now task_status: {}", wei_env::task_status());
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
 
+    use std::os::windows::process::CommandExt;
+
+    info!("run copy files");
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("powershell")
+        .arg("-ExecutionPolicy").arg("Bypass")
+        .arg("-File").arg("wei-updater.ps1")
+        .arg("-arg1").arg(online_version.clone())
+        .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
+    
+    #[cfg(not(target_os = "windows"))]
+    copy_and_run(online_version)?;
+
+    info!("updater success!");
+    
+    Ok(())
+}
+
+fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
     let new = "new/".to_owned() + online_version.as_str();
@@ -197,9 +217,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // 打印工作目录
     std::env::set_current_dir("../")?;
     wei_run::run_async("wei", vec![])?;
-
-    info!("updater success!");
-    
     Ok(())
 }
 
