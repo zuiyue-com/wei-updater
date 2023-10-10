@@ -36,10 +36,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut online_version;
 
     loop {
-        if wei_env::status() == "0" {
-            kill().await?;
-            return Ok(());
-        }
+        check_status()?;
 
         online_version = reqwest::get(&url).await?.text().await?;
     
@@ -153,6 +150,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
 
+        check_status()?;
+
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
@@ -220,7 +219,21 @@ fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-async fn kill() -> Result<(), Box<dyn std::error::Error>> {
+fn check_status() -> Result<(), Box<dyn std::error::Error>> {
+    if wei_env::status() == "0" {
+        kill()?;
+        #[cfg(target_os = "windows")]
+        std::process::Command::new("powershell")
+            .arg("-ExecutionPolicy").arg("Bypass")
+            .arg("-File").arg("wei-daemon-close.ps1")
+            .arg("-arg1").arg(online_version.clone())
+            .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
+        
+        std::process::exit(0);
+    }
+}
+
+fn kill() -> Result<(), Box<dyn std::error::Error>> {
     // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
     let content = std::fs::read_to_string("./kill.dat")?;
     let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
