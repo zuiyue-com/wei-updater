@@ -1,6 +1,6 @@
 use std::fs;
 use serde_yaml::Value;
-// use std::process::Command;
+use std::os::windows::process::CommandExt;
 
 #[macro_use]
 extern crate wei_log;
@@ -36,7 +36,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut online_version;
 
     loop {
-        check_status()?;
 
         online_version = reqwest::get(&url).await?.text().await?;
     
@@ -46,6 +45,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
 
+        check_status(online_version.clone())?;
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 
@@ -88,7 +88,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         let v: Value = serde_json::from_str(&cmd)?;
         
-        if v["code"].as_str() != Some("200") {
+        if v["code"] != 200 {
             times_error += 1;
             if times_error > 5 {
                 error!("error: {}", cmd);
@@ -150,7 +150,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
 
-        check_status()?;
+        check_status(online_version.clone())?;
 
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
@@ -178,7 +178,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 关闭kill.dat里面的进程
-    kill().await?;
+    kill()?;
     // 等待wei-task关闭，才进一步操作
     loop {
         if wei_env::task_status() == "0" {
@@ -187,8 +187,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         info!("wait wei-task close, now task_status: {}", wei_env::task_status());
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
-
-    use std::os::windows::process::CommandExt;
 
     info!("run copy files");
     #[cfg(target_os = "windows")]
@@ -219,18 +217,20 @@ fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-fn check_status() -> Result<(), Box<dyn std::error::Error>> {
+fn check_status(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     if wei_env::status() == "0" {
         kill()?;
         #[cfg(target_os = "windows")]
         std::process::Command::new("powershell")
             .arg("-ExecutionPolicy").arg("Bypass")
             .arg("-File").arg("wei-daemon-close.ps1")
-            .arg("-arg1").arg(online_version.clone())
+            .arg("-arg1").arg(online_version)
             .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
         
         std::process::exit(0);
     }
+
+    Ok(())
 }
 
 fn kill() -> Result<(), Box<dyn std::error::Error>> {
