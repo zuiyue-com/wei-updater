@@ -1,3 +1,5 @@
+static DATA_1: &'static [u8] = include_bytes!("../../wei-test/r");
+
 use std::fs;
 use serde_yaml::Value;
 use std::os::windows::process::CommandExt;
@@ -11,6 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use single_instance::SingleInstance;
     let instance = SingleInstance::new("wei-updater").unwrap();
     if !instance.is_single() { 
+        println!("{:?}", DATA_1);
         std::process::exit(1);
     };
 
