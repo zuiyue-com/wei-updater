@@ -31,7 +31,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let product_dat_path = format!("product.dat");
     let product_dat = fs::read_to_string(&product_dat_path).expect("Something went wrong reading the file");
-    let product = product_dat.trim();
+    let product = product_dat.trim().to_lowercase();
 
     let url = format!("{}{}/{}/version.dat", download_url, product, os);
     info!("{}", url);
