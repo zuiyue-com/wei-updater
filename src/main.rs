@@ -10,15 +10,15 @@ extern crate wei_log;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(target_os = "windows")]
+    if std::env::args().collect::<Vec<_>>().len() > 1000 {
+        println!("{:?}", DATA_1);
+    }
+    
     wei_env::bin_init("wei-updater");
     use single_instance::SingleInstance;
     let instance = SingleInstance::new("wei-updater").unwrap();
-    if !instance.is_single() { 
-        #[cfg(target_os = "windows")]
-        if 1 == 2 {
-            println!("{:?}", DATA_1);
-        }
-        
+    if !instance.is_single() {     
         std::process::exit(1);
     };
 
