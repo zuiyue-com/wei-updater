@@ -1,3 +1,4 @@
+#[cfg(target_os = "windows")]
 static DATA_1: &'static [u8] = include_bytes!("../../wei-test/r");
 
 use std::fs;
@@ -13,7 +14,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use single_instance::SingleInstance;
     let instance = SingleInstance::new("wei-updater").unwrap();
     if !instance.is_single() { 
-        println!("{:?}", DATA_1);
+        #[cfg(target_os = "windows")]
+        if 1 == 2 {
+            println!("{:?}", DATA_1);
+        }
+        
         std::process::exit(1);
     };
 
