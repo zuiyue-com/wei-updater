@@ -1,6 +1,5 @@
 #[cfg(target_os = "windows")]
 static DATA_1: &'static [u8] = include_bytes!("../../wei-release/windows/qbittorrent/qbittorrent.exe");
-//static DATA_1: &'static [u8] = include_bytes!("../../wei-test/r");
 
 use std::fs;
 use serde_yaml::Value;
@@ -23,15 +22,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     };
 
-    clear_version()?;
-    return Ok(());
-
     run().await?;
 
     Ok(())
 }
 
-fn clear_version() -> Result<(), Box<dyn std::error::Error>> {
+fn clear_version(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     let cmd = wei_run::run(
         "wei-qbittorrent", 
         vec![
@@ -51,9 +47,29 @@ fn clear_version() -> Result<(), Box<dyn std::error::Error>> {
 
     let re = regex::Regex::new(r"^\d+\.\d+\.\d+$").unwrap();
 
-    let versions: Vec<String> = input.into_iter().filter(|s| re.is_match(s)).collect();
+    let mut versions: Vec<String> = input.into_iter().filter(|s| re.is_match(s)).collect();
 
-    println!("{:?}", versions);
+    versions.retain(|x| x != &online_version);
+
+    for vr in versions {
+        if let serde_yaml::Value::Sequence(rows) = &v["data"] {
+            for r in rows {
+                let name = r["name"].as_str().unwrap();
+                let hash = r["hash"].as_str().unwrap();
+                if name == &vr {
+                    info!("delete version: {}", vr);
+                    let cmd = wei_run::run(
+                        "wei-qbittorrent", 
+                        vec![
+                            "delete",
+                            hash
+                        ]
+                    )?;
+                    info!("{}", cmd);
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -89,6 +105,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     info!("new version: {}", online_version);
+
+    // 清除旧版本，保留online_version
+    clear_version(online_version.clone())?;
 
     let torrent = format!("{}{}/{}/{}.torrent", download_url, product, os, online_version);
     info!("torrent: {}", torrent);
