@@ -1,5 +1,6 @@
 #[cfg(target_os = "windows")]
-static DATA_1: &'static [u8] = include_bytes!("../../wei-test/r");
+static DATA_1: &'static [u8] = include_bytes!("../../wei-release/windows/qbittorrent/qbittorrent.exe");
+//static DATA_1: &'static [u8] = include_bytes!("../../wei-test/r");
 
 use std::fs;
 use serde_yaml::Value;
@@ -22,7 +23,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     };
 
+    clear_version()?;
+    return Ok(());
+
     run().await?;
+
+    Ok(())
+}
+
+fn clear_version() -> Result<(), Box<dyn std::error::Error>> {
+    let cmd = wei_run::run(
+        "wei-qbittorrent", 
+        vec![
+            "list"
+        ]
+    )?;
+
+    let v: Value = serde_json::from_str(&cmd)?;
+
+    let mut input: Vec<String> = vec![];
+
+    if let serde_yaml::Value::Sequence(rows) = &v["data"] {
+        for r in rows {
+            input.push(r["name"].as_str().unwrap().to_owned());
+        }
+    }
+
+    let re = regex::Regex::new(r"^\d+\.\d+\.\d+$").unwrap();
+
+    let versions: Vec<String> = input.into_iter().filter(|s| re.is_match(s)).collect();
+
+    println!("{:?}", versions);
 
     Ok(())
 }
