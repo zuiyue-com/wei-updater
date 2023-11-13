@@ -237,14 +237,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // 关闭kill.dat里面的进程
     kill()?;
+    check_process("wei-updater");
+    
     // 等待wei-task关闭，才进一步操作
-    loop {
-        if wei_env::task_status() == "0" {
-            break;
-        }
-        info!("wait wei-task close, now task_status: {}", wei_env::task_status());
-        std::thread::sleep(std::time::Duration::from_secs(10));
-    }
+    // loop {
+        
+        // if wei_env::task_status() == "0" {
+        //     break;
+        // }
+        // info!("wait wei-task close, now task_status: {}", wei_env::task_status());
+        // std::thread::sleep(std::time::Duration::from_secs(10));
+    // }
 
     info!("run copy files");
     #[cfg(target_os = "windows")]
@@ -305,31 +308,31 @@ fn kill() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// fn check_process(exclude: &str) {
-//     loop {
-//         let output = if cfg!(target_os = "windows") {
-//             Command::new("powershell")
-//                 .arg("-Command")
-//                 .arg(format!("Get-Process | Where-Object {{ ($_.Name -like '*wei*' -or $_.Name -like '*wei-*') -and $_.Name -notlike '*{}*' }}", exclude))
-//                 .output()
-//                 .expect("Failed to execute command")
-//         } else {
-//             Command::new("bash")
-//                 .arg("-c")
-//                 .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
-//                 .output()
-//                 .expect("Failed to execute command")
-//         };
+fn check_process(exclude: &str) {
+    loop {
+        let output = if cfg!(target_os = "windows") {
+            Command::new("powershell")
+                .arg("-Command")
+                .arg(format!("Get-Process | Where-Object {{ ($_.Name -like '*wei*' -or $_.Name -like '*wei-*') -and $_.Name -notlike '*{}*' }}", exclude))
+                .output()
+                .expect("Failed to execute command")
+        } else {
+            Command::new("bash")
+                .arg("-c")
+                .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
+                .output()
+                .expect("Failed to execute command")
+        };
 
-//         if !output.stdout.is_empty() {
-//             info!("Process exists. Waiting...");
-//         } else {
-//             info!("Process not found. Exiting...");
-//             break;
-//         }
-//         std::thread::sleep(std::time::Duration::from_secs(10));
-//     }
-// }
+        if !output.stdout.is_empty() {
+            info!("Process exists. Waiting...");
+        } else {
+            info!("Process not found. Exiting...");
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
+}
 
 #[cfg(not(target_os = "windows"))]
 fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
