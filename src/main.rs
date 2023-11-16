@@ -311,13 +311,13 @@ fn kill() -> Result<(), Box<dyn std::error::Error>> {
 fn check_process(exclude: &str) {
     loop {
         let output = if cfg!(target_os = "windows") {
-            Command::new("powershell")
+            std::process::Command::new("powershell")
                 .arg("-Command")
                 .arg(format!("Get-Process | Where-Object {{ ($_.Name -like '*wei*' -or $_.Name -like '*wei-*') -and $_.Name -notlike '*{}*' }}", exclude))
                 .output()
                 .expect("Failed to execute command")
         } else {
-            Command::new("bash")
+            std::process::Command::new("bash")
                 .arg("-c")
                 .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
                 .output()
