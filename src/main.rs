@@ -226,7 +226,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // 读取name.dat,里面是一个字符串
-    let content = match std::fs::read_to_string("name.dat") {
+    let name = match std::fs::read_to_string("name.dat") {
         Ok(c) => c,
         Err(_) => "Wei".to_string()
     };
@@ -235,7 +235,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if os == "windows" {
         use winrt_notification::{Duration, Sound, Toast};
         Toast::new(Toast::POWERSHELL_APP_ID)
-        .title(&content)
+        .title(&name)
         .text1("新版本已成功下载并正在进行更新，请避免重启软件。更新完毕，软件会自动重启。")
         .sound(Some(Sound::SMS))
         .duration(Duration::Short).show()?;
