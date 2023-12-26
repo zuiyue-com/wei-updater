@@ -300,7 +300,27 @@ fn check_status(online_version: String) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
+// 列出当前目录下面所有的wei-开头的exe，然后关闭他们
+fn kill_all() -> Result<(), Box<dyn std::error::Error>> {
+    let mut files = fs::read_dir(".")?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()?;
+
+    files.retain(|x| x.is_file());
+
+    for f in files {
+        let name = f.file_name().unwrap().to_str().unwrap();
+        if name.starts_with("wei-") {
+            info!("kill: {}", name);
+            wei_run::kill(name).unwrap();
+        }
+    }
+
+    Ok(())
+}
+
 fn kill() -> Result<(), Box<dyn std::error::Error>> {
+    kill_all()?;
     // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
     let content = std::fs::read_to_string("./kill.dat")?;
     let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
