@@ -304,7 +304,7 @@ fn check_status(online_version: String) -> Result<(), Box<dyn std::error::Error>
 fn kill_all() -> Result<(), Box<dyn std::error::Error>> {
     let mut files = fs::read_dir(".")?
         .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()?;
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
 
     files.retain(|x| x.is_file());
 
