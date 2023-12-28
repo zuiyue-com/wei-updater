@@ -74,6 +74,21 @@ fn clear_version(online_version: String) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
+fn parse_version(version: &str) -> Result<u32, Box<dyn std::error::Error>> {
+    let parts: Vec<u32> = version
+        .split('.')
+        .map(|part| part.parse::<u32>())
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    // 确保版本号格式正确
+    if parts.len() != 3 {
+        return Err("Version should have three parts".into());
+    }
+    
+    // 计算版本号的数值表示，假设格式始终为 major.minor.patch
+    Ok(parts[0] * 10000 + parts[1] * 100 + parts[2])
+}
+
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let os = std::env::consts::OS;
 
@@ -100,13 +115,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         // 0.2.3 => 0 * 10000 + 2 * 100 + 3 * 1 = 203
         // 0.2.5 => 0 * 10000 + 2 * 100 + 5 * 1 = 205
         // 0.2.3 < 0.2.5
+        let online_version_num = parse_version(&online_version)?;
+        let local_version_num = parse_version(&local_version)?;
 
-        let online_version = online_version.split(".").collect::<Vec<u32>>();
-        let local_version = local_version.split(".").collect::<Vec<u32>>();
-        let online_version = online_version[0] * 10000 + online_version[1] * 100 + online_version[2] * 1;
-        let local_version = local_version[0] * 10000 + local_version[1] * 100 + local_version[2] * 1;
-
-        if local_version > online_version {
+        if local_version_num > online_version_num {
             info!("No new version");
         } else {
             break;
