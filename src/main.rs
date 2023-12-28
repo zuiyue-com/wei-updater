@@ -93,8 +93,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     loop {
 
         online_version = reqwest::get(&url).await?.text().await?;
-    
-        if online_version == local_version {
+
+        // online_version 的值 是 0.2.3
+        // local_version 的值 是 0.2.5
+        // 把这两个值 转换成数字，然后比较大小，第一个位置的0乘于10000,第二个位置的2乘于100,第三个位置的3乘于1
+        // 0.2.3 => 0 * 10000 + 2 * 100 + 3 * 1 = 203
+        // 0.2.5 => 0 * 10000 + 2 * 100 + 5 * 1 = 205
+        // 0.2.3 < 0.2.5
+
+        let online_version = online_version.split(".").collect::<Vec<u32>>();
+        let local_version = local_version.split(".").collect::<Vec<u32>>();
+        let online_version = online_version[0] * 10000 + online_version[1] * 100 + online_version[2] * 1;
+        let local_version = local_version[0] * 10000 + local_version[1] * 100 + local_version[2] * 1;
+
+        if local_version > online_version {
             info!("No new version");
         } else {
             break;
