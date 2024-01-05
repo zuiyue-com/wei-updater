@@ -118,7 +118,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let online_version_num = parse_version(&online_version)?;
         let local_version_num = parse_version(&local_version)?;
 
-        if local_version_num > online_version_num {
+        if local_version_num >= online_version_num {
             info!("No new version");
         } else {
             break;
