@@ -28,46 +28,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn clear_version(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
-    let cmd = wei_run::run(
-        "wei-qbittorrent", 
-        vec![
-            "list"
-        ]
-    )?;
 
-    let v: Value = serde_json::from_str(&cmd)?;
-
-    let mut input: Vec<String> = vec![];
-
-    if let serde_yaml::Value::Sequence(rows) = &v["data"] {
-        for r in rows {
-            input.push(r["name"].as_str().unwrap().to_owned());
+    // 清除旧版本，保留online_version
+    let data = std::path::Path::new("./new").read_dir().unwrap();
+    for entry in data {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        if name != online_version.as_str() ||
+           name != format!("{}.torrent", online_version).as_str() {
+            info!("delete: {}", name);
+            match fs::remove_dir_all(path.clone()) {
+                Ok(_) => {},
+                Err(_) => {}
+            };
+            match fs::remove_file(path) {
+                Ok(_) => {},
+                Err(_) => {}
+            };
         }
     }
 
+    let data = wei_run::run("wei-download", vec!["list_all"])?;
+    let v: serde_json::Value = match serde_json::from_str(&data) {
+        Ok(c) => c,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    let data = match v["data"].as_object() {
+        Some(c) => c,
+        None => {
+            return Ok(());
+        }
+    };
+
     let re = regex::Regex::new(r"^\d+\.\d+\.\d+$").unwrap();
+    
+    for (key, value) in data {
+        let name = value["name"].as_str().unwrap();
+        if re.is_match(name) && name != online_version {
+            println!("delete {}", name);
+            wei_run::run("wei-download", vec!["delete", key])?;
+        }
+    }
 
-    let mut versions: Vec<String> = input.into_iter().filter(|s| re.is_match(s)).collect();
+    Ok(())
+}
 
-    versions.retain(|x| x != &online_version);
-
-    for vr in versions {
-        if let serde_yaml::Value::Sequence(rows) = &v["data"] {
-            for r in rows {
-                let name = r["name"].as_str().unwrap();
-                let hash = r["hash"].as_str().unwrap();
-                if name == &vr {
-                    info!("delete version: {}", vr);
-                    let cmd = wei_run::run(
-                        "wei-qbittorrent", 
-                        vec![
-                            "delete",
-                            hash
-                        ]
-                    )?;
-                    info!("{}", cmd);
-                }
-            }
+fn clear_undownload_version(version: String) -> Result<(), Box<dyn std::error::Error>> {
+    let data = wei_run::run("wei-download", vec!["list_all"])?;
+    let data: serde_json::Value = serde_json::from_str(&data).unwrap();
+    let data = data["data"].as_object().unwrap();
+    
+    for (key, value) in data {
+        if value["completed_length"].as_str().unwrap() == "0" &&
+           value["name"].as_str().unwrap() == version.as_str(){
+            wei_run::run("wei-download", vec!["delete", key])?;
         }
     }
 
@@ -142,24 +159,25 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(&path)?;
     }
     
-    info!("add torrent to qbittorrent");
-    wei_run::run(
-        "wei-qbittorrent", 
-        vec![
-            "add",
-            torrent.as_str(),
-            path.display().to_string().as_str()
-        ]
-    )?;
+    info!("add torrent to wei-download");
+    wei_run::run("wei-download", vec!["add", &torrent, path.display().to_string().as_str()])?;
 
     // 检查数据是否下载完毕, 错误次过多，直接退出
     let mut times_error = 0;
-    let mut hashes;
+    let mut times_i = 0;
+    let mut gid;
     loop {
-        // tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        times_i += 1;
+
+        if times_i > 17280 {
+            clear_undownload_version(online_version.clone())?;
+            info!("download timeout, clear undownload version and exit");
+            std::process::exit(1);
+        }
+        
         info!("loop check list");
         let cmd = wei_run::run(
-            "wei-qbittorrent", 
+            "wei-download", 
             vec![
                 "list",
                 online_version.clone().as_str()
@@ -173,59 +191,46 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         if v["code"] != 200 {
             times_error += 1;
             if times_error > 5 {
-                error!("error: {}", cmd);
+                error!("run wei-download error: {}", cmd);
                 return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "error")));
             }
             continue;
         }
 
         let v = &v["data"];
-        hashes = v["hash"].as_str().unwrap().to_owned().clone();
 
         info!("progress: {:?}", v);
 
-        if v["progress"].as_f64().unwrap() == 1.0 {
+        if v["completed_length"].as_str().unwrap() == v["total_length"].as_str().unwrap() {
             finished = true;
         }
 
-        // 出现 pausedDL | pausedUP 状态，需要重新开启下载
-        let state = v["state"].as_str().unwrap();
+        gid = v["gid"].as_str().unwrap().to_string();
 
-        // 如果保存的路径不对，需要重新设置路径
-        if v["save_path"].as_str().unwrap().replace("\\\\", "\\") != path.display().to_string() {
+        // 把path_new和v["dir"]放进Path()里面，然后比较
+        let path_online_version = path.join(&online_version);
+        let path_online_version = path_online_version.display().to_string();
+        let path_online_version = path_online_version.replace("\\", "/");
+
+        let path_download = std::path::Path::new(v["dir"].as_str().unwrap());
+        let path_download = path_download.display().to_string();
+        let path_download = path_download.replace("\\", "/");
+
+        info!("path_online_version: {}", path_online_version);
+        info!("path_download: {}", path_download);
+
+        if path_online_version != path_download {
             wei_run::run(
-                "wei-qbittorrent", 
+                "wei-download", 
                 vec![
-                    "set-location",
-                    v["hash"].as_str().unwrap(),
+                    "set_location",
+                    &gid,
                     path.display().to_string().as_str()
                 ]
             )?;
 
-            info!("set hash location: {}", path.display().to_string());
-        }
-
-        match state {
-            "pausedDL" | "pausedUP" => {
-                wei_run::run(
-                    "wei-qbittorrent", 
-                    vec![
-                        "resume",
-                        v["hash"].as_str().unwrap()
-                    ]
-                )?;
-            },
-            "unknown" | "missingFiles" => {
-                wei_run::run(
-                    "wei-qbittorrent", 
-                    vec![
-                        "del",
-                        v["hash"].as_str().unwrap()
-                    ]
-                )?;
-                break;
-            },
-            _ => {}
+            info!("set location: {}", path.display().to_string());
+            std::process::exit(0);
         }
 
         if finished {
@@ -237,17 +242,49 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
+
+
     info!("Download finished.");
+
+    info!("check gid: {}", gid);
+
+    let data = match wei_run::run("wei-download", vec!["check", &gid]) {
+        Ok(c) => c,
+        Err(e) => {
+            info!("wei-download error: {}", e);
+            wei_run::run("wei-download", vec!["delete", &gid])?;
+            std::process::exit(1);
+        }
+    };
+
+    info!("check data: {}", data);
+
+    let data: serde_json::Value = match serde_json::from_str(&data) {
+        Ok(c) => c,
+        Err(e) => {
+            info!("check error: {}, data: {}", e, data);
+            wei_run::run("wei-download", vec!["delete", &gid])?;
+            std::process::exit(1);
+        }
+    };
+    let data = match data["data"]["check"].as_bool() {
+        Some(c) => c,
+        None => {
+            info!("data check error: {}", data);
+            // wei_run::run("wei-download", vec!["delete", &gid])?;
+            std::process::exit(1);
+        }
+    };
+    if data == false {
+        wei_run::run("wei-download", vec!["delete", &gid])?;
+        info!("check error, delete download data");
+        std::process::exit(1);
+    }
+
+    info!("Check finished.");
+
     // 下载完成后，写入 .wei/status.dat 0 重启所有daemon
     wei_env::stop();
-
-    wei_run::run(
-        "wei-qbittorrent", 
-        vec![
-            "recheck",
-            hashes.as_str()
-        ]
-    )?;
 
     // 读取name.dat,里面是一个字符串
     let name = match std::fs::read_to_string("name.dat") {
