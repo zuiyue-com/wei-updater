@@ -199,7 +199,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         let v = &v["data"];
 
-        info!("progress: {:?}", v);
+        info!("progress: {}/{}", v["completed_length"].as_str().unwrap(), v["total_length"].as_str().unwrap());
 
         if v["completed_length"].as_str().unwrap() == v["total_length"].as_str().unwrap() {
             finished = true;
