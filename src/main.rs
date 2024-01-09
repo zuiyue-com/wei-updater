@@ -108,8 +108,6 @@ fn parse_version(version: &str) -> Result<u32, Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    update_failed().await?;
-
     let os = std::env::consts::OS;
 
     let download_dat_path = format!("download.dat");
