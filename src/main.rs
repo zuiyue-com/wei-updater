@@ -35,7 +35,8 @@ fn clear_version(online_version: String) -> Result<(), Box<dyn std::error::Error
         let entry = entry.unwrap();
         let path = entry.path();
         let name = path.file_name().unwrap().to_str().unwrap();
-        if name != online_version.as_str() ||
+        info!("name: {}, online_version: {}", name, online_version);
+        if name != online_version.as_str() &&
            name != format!("{}.torrent", online_version).as_str() {
             info!("delete: {}", name);
             match fs::remove_dir_all(path.clone()) {
@@ -147,8 +148,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("new version: {}", online_version);
 
-    // 清除旧版本，保留online_version
-    clear_version(online_version.clone())?;
 
     let torrent = format!("{}{}/{}/{}.torrent", download_url, product, os, online_version);
     info!("torrent: {}", torrent);
@@ -169,6 +168,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         times_i += 1;
 
+        // 17280 * 5 = 86400, 86400 / 3600 = 24h
+        // 如果 24h 内没有下载完成，就清除没下载完的数据，然后退出
         if times_i > 17280 {
             clear_undownload_version(online_version.clone())?;
             info!("download timeout, clear undownload version and exit");
@@ -220,16 +221,19 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         info!("path_download: {}", path_download);
 
         if path_online_version != path_download {
-            wei_run::run(
-                "wei-download", 
-                vec![
-                    "set_location",
-                    &gid,
-                    path.display().to_string().as_str()
-                ]
-            )?;
 
-            info!("set location: {}", path.display().to_string());
+            wei_run::run("wei-download", vec!["delete", &gid])?;
+
+            // wei_run::run(
+            //     "wei-download", 
+            //     vec![
+            //         "set_location",
+            //         &gid,
+            //         path.display().to_string().as_str()
+            //     ]
+            // )?;
+
+            // info!("set location: {}", path.display().to_string());
             std::process::exit(0);
         }
 
@@ -305,6 +309,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // 关闭kill.dat里面的进程
     kill()?;
     check_process("wei-updater");
+
     
     // 等待wei-task关闭，才进一步操作
     // loop {
@@ -326,6 +331,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     
     #[cfg(not(target_os = "windows"))]
     copy_and_run(online_version)?;
+
+    // 清除旧版本，保留online_version
+    clear_version(online_version.clone())?;
 
     info!("updater success!");
     
