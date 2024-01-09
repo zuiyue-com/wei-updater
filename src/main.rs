@@ -108,6 +108,8 @@ fn parse_version(version: &str) -> Result<u32, Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    update_failed().await?;
+
     let os = std::env::consts::OS;
 
     let download_dat_path = format!("download.dat");
@@ -173,7 +175,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         if times_i > 17280 {
             clear_undownload_version(online_version.clone())?;
             info!("download timeout, clear undownload version and exit");
-            std::process::exit(1);
+            update_failed().await?;
         }
         
         info!("loop check list");
@@ -233,8 +235,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             //     ]
             // )?;
 
-            // info!("set location: {}", path.display().to_string());
-            std::process::exit(0);
+            info!("set location: {}", path.display().to_string());
+            update_failed().await?;
         }
 
         if finished {
@@ -257,7 +259,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             info!("wei-download error: {}", e);
             wei_run::run("wei-download", vec!["delete", &gid])?;
-            std::process::exit(1);
+            update_failed().await?;
+            serde_json::json!({"data": {"check": false}}).to_string()
         }
     };
 
@@ -268,21 +271,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             info!("check error: {}, data: {}", e, data);
             wei_run::run("wei-download", vec!["delete", &gid])?;
-            std::process::exit(1);
+            update_failed().await?;
+            serde_json::json!({"data": {"check": false}})
         }
     };
     let data = match data["data"]["check"].as_bool() {
         Some(c) => c,
         None => {
             info!("data check error: {}", data);
-            // wei_run::run("wei-download", vec!["delete", &gid])?;
-            std::process::exit(1);
+            update_failed().await?;
+            false
         }
     };
     if data == false {
         wei_run::run("wei-download", vec!["delete", &gid])?;
         info!("check error, delete download data");
-        std::process::exit(1);
+        update_failed().await?;
     }
 
     info!("Check finished.");
@@ -338,6 +342,89 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     info!("updater success!");
     
     Ok(())
+}
+
+pub async fn update_failed() -> Result<(), Box<dyn std::error::Error>> {
+    // 记录失败次数
+    let mut failed_times = wei_env::read(
+        &format!("{}updater-failed.dat", wei_env::home_dir()?), 
+        "times"
+    )?;
+
+    if failed_times == "" {
+        failed_times = "0".to_string();
+    }
+
+    info!("failed_times: {}", failed_times);
+
+    let mut failed_times = failed_times.parse::<u32>()? + 1;
+
+    // 如果失败次数大于5次，读取uuid，读取日志，上报失败原因
+    if failed_times > 5 {
+        let uuid = wei_env::dir_uuid();
+        let uuid = std::path::Path::new(&uuid);
+        let uuid = match std::fs::read_to_string(&uuid) {
+            Ok(c) => c,
+            Err(_) => "uuid 文件不存在".to_string()
+        };
+
+        // 获取当前应用程序的路径
+        let exe_path = std::env::current_exe()?;
+        // 获取exe文件名
+        let exe_name = match exe_path.file_name() {
+            Some(c) => match c.to_str() {
+                Some(c) => c,
+                None => "wei-updater.exe"
+            },
+            None => "wei-updater.exe"
+        };
+
+        let info = format!("{}{}.log.txt", wei_env::home_dir()?, exe_name);
+        let info = match std::fs::read_to_string(info) {
+            Ok(c) => c,
+            Err(_) => "日志文件不存在".to_string()
+        };
+
+        let url = match std::fs::read_to_string("./server.dat") {
+            Ok(c) => c,
+            Err(_) => "https://www.zuiyue.com".to_string()
+        };
+        
+        let url = format!("{}/clientapi.php", url);
+        let post = serde_json::json!({
+            "modac": "log",
+            "uuid": uuid,
+            "info": info
+        });
+
+        let client = reqwest::Client::new();
+        match client.post(&url).json(&post).send().await {
+            Ok(_) => {},
+            Err(err) => {
+                info!("上报失败: {}", err);
+            }
+        }
+
+        failed_times = 0;
+
+        wei_env::write(
+            &format!("{}updater-failed.dat", wei_env::home_dir()?), 
+            "times",
+            &failed_times.to_string()
+        )?;
+
+        info!("sleep 1 day");
+        // 如果大于5次以上，就休息一天，再重置失败次数。
+        std::thread::sleep(std::time::Duration::from_secs(86400));
+    }
+
+    wei_env::write(
+        &format!("{}updater-failed.dat", wei_env::home_dir()?), 
+        "times",
+        &failed_times.to_string()
+    )?;
+
+    std::process::exit(0);
 }
 
 #[cfg(not(target_os = "windows"))]
