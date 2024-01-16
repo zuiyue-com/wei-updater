@@ -133,8 +133,15 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         // 0.2.3 => 0 * 10000 + 2 * 100 + 3 * 1 = 203
         // 0.2.5 => 0 * 10000 + 2 * 100 + 5 * 1 = 205
         // 0.2.3 < 0.2.5
+
+        info!("online_version: {}", online_version);
+        info!("local_version: {}", local_version);
+
         let online_version_num = parse_version(&online_version)?;
         let local_version_num = parse_version(&local_version)?;
+
+        info!("online_version_num: {}", online_version_num);
+        info!("local_version_num: {}", local_version_num);
 
         if local_version_num >= online_version_num {
             info!("No new version");
