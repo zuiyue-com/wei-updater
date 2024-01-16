@@ -1,5 +1,5 @@
 #[cfg(target_os = "windows")]
-static DATA_1: &'static [u8] = include_bytes!("../../wei-release/windows/qbittorrent/qbittorrent.exe");
+static DATA_1: &'static [u8] = include_bytes!("../../wei-release/windows/san/san.txt");
 
 use std::fs;
 use serde_yaml::Value;
