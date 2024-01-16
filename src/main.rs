@@ -202,7 +202,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         info!("progress: {}/{}", v["completed_length"].as_str().unwrap(), v["total_length"].as_str().unwrap());
 
-        if v["completed_length"].as_str().unwrap() == v["total_length"].as_str().unwrap() {
+        if v["completed_length"].as_str().unwrap() == v["total_length"].as_str().unwrap() &&
+           v["completed_length"].as_str().unwrap() != "0" &&
+           v["total_length"].as_str().unwrap() != "0" {
             finished = true;
         }
 
