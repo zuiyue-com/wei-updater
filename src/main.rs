@@ -436,6 +436,13 @@ pub async fn update_failed() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(target_os = "windows"))]
 fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
+    let xz_file = "new/".to_owned() + online_version.as_str() + ".tar.xz";
+    let xz_file_path = std::path::Path::new(&xz_file);
+    if xz_file_path.exists() { 
+        info!("Start decompress file");
+        wei_file::xz_decompress(xz_file)?;
+    }
+
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
     let new = "new/".to_owned() + online_version.as_str();
