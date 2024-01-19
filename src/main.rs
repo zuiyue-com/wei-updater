@@ -36,8 +36,9 @@ fn clear_version(online_version: String) -> Result<(), Box<dyn std::error::Error
         let path = entry.path();
         let name = path.file_name().unwrap().to_str().unwrap();
         info!("name: {}, online_version: {}", name, online_version);
-        if name != online_version.as_str() &&
-           name != format!("{}.torrent", online_version).as_str() {
+        // if name != online_version.as_str() &&
+        //    name != format!("{}.torrent", online_version).as_str() {
+        if name.contains(&online_version) == false {
             info!("delete: {}", name);
             match fs::remove_dir_all(path.clone()) {
                 Ok(_) => {},
