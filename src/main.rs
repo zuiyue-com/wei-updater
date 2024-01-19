@@ -108,6 +108,8 @@ fn parse_version(version: &str) -> Result<u32, Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    info!("Start updater.");
+
     let os = std::env::consts::OS;
 
     let download_dat_path = format!("download.dat");
@@ -159,19 +161,57 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let torrent = format!("{}{}/{}/{}.torrent", download_url, product, os, online_version);
     info!("torrent: {}", torrent);
 
-    // 使用qbittorrent下载数据
     let path = std::env::current_dir()?.join("new");
     if !path.exists() {
         fs::create_dir_all(&path)?;
     }
+
+    // 列出同版本的文件，如果有，则删除
+    let data = wei_run::run("wei-download", vec!["list", &(online_version.clone() + ".tar.xz")]);
+    let data = match data {
+        Ok(c) => c,
+        Err(_) => "".to_string()
+    };
+
+    let data:serde_json::Value = match serde_json::from_str(&data) {
+        Ok(c) => c,
+        Err(_) => serde_json::json!({"code": 500})
+    };
+
+    let gid = match data["data"]["gid"].as_str() {
+        Some(c) => c,
+        None => ""
+    };
+
+    if gid != "" {
+        info!("already exists gid: {}", gid);
+        wei_run::run("wei-download", vec!["delete", gid])?;
+        std::process::exit(0);
+    }
     
     info!("add torrent to wei-download");
-    wei_run::run("wei-download", vec!["add", &torrent, path.display().to_string().as_str()])?;
+    let gid = match wei_run::run("wei-download", vec!["add", &torrent, path.display().to_string().as_str()]) {
+        Ok(c) => {
+            let data: serde_json::Value = serde_json::from_str(&c)?;
+            match data["data"]["result"].as_str() {
+                Some(c) => c.to_string(),
+                None => {
+                    info!("add torrent error: {}", c);
+                    update_failed().await?;
+                    "".to_string()
+                }
+            }
+        },
+        Err(e) => {
+            info!("wei-download error: {}", e);
+            update_failed().await?;
+            serde_json::json!({"code": 500}).to_string()
+        }
+    };
 
     // 检查数据是否下载完毕, 错误次过多，直接退出
     let mut times_error = 0;
     let mut times_i = 0;
-    let mut gid;
     loop {
         times_i += 1;
 
@@ -184,13 +224,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         info!("loop check list");
-        let cmd = wei_run::run(
+        let cmd = match wei_run::run(
             "wei-download", 
             vec![
-                "list",
-                online_version.clone().as_str()
+                "list_id",
+                &gid
             ]
-        )?;
+        ) {
+            Ok(c) => c,
+            Err(e) => {
+                info!("wei-download error: {}", e);
+                update_failed().await?;
+                serde_json::json!({"code": 500}).to_string()
+            }
+        };
 
         let mut finished = false;
 
@@ -215,14 +262,21 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             finished = true;
         }
 
-        gid = v["gid"].as_str().unwrap().to_string();
-
         // 把path_new和v["dir"]放进Path()里面，然后比较
         let path_online_version = path.join(&online_version);
         let path_online_version = path_online_version.display().to_string();
         let path_online_version = path_online_version.replace("\\", "/");
+        let path_online_version = format!("{}.tar.xz", path_online_version);
 
-        let path_download = std::path::Path::new(v["dir"].as_str().unwrap());
+        let dir = match v["dir"].as_str() {
+            Some(c) => c,
+            None => {
+                info!("dir is null");
+                update_failed().await?;
+                ""
+            }
+        };
+        let path_download = std::path::Path::new(dir);
         let path_download = path_download.display().to_string();
         let path_download = path_download.replace("\\", "/");
 
@@ -297,6 +351,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     info!("Check finished.");
+
+    decompress(online_version.clone()).await?;
 
     // 下载完成后，写入 .wei/status.dat 0 重启所有daemon
     wei_env::stop();
@@ -434,15 +490,31 @@ pub async fn update_failed() -> Result<(), Box<dyn std::error::Error>> {
     std::process::exit(0);
 }
 
-#[cfg(not(target_os = "windows"))]
-fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
+async fn decompress(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Start decompress file");
     let xz_file = "new/".to_owned() + online_version.as_str() + ".tar.xz";
+    info!("xz_file: {}", xz_file);
+
     let xz_file_path = std::path::Path::new(&xz_file);
     if xz_file_path.exists() { 
-        info!("Start decompress file");
-        wei_file::xz_decompress(xz_file)?;
+        wei_file::xz_decompress(&xz_file)?;
+    } else {
+        update_failed().await?;
     }
 
+    let dir = "new/".to_owned() + online_version.as_str();
+    let dir_path = std::path::Path::new(&dir);
+    if dir_path.exists() {
+        // wei_file::tar_decompress(&dir)?;
+    } else {
+        update_failed().await?;
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     // 复制new / online-version 到当前目录
     info!("copy new file to main dir");
     let new = "new/".to_owned() + online_version.as_str();
