@@ -578,7 +578,9 @@ fn kill() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn check_process(exclude: &str) {
+    let mut i = 0;
     loop {
+        i += 1;
         let output = if cfg!(target_os = "windows") {
             std::process::Command::new("powershell")
                 .arg("-Command")
@@ -592,6 +594,11 @@ fn check_process(exclude: &str) {
                 .output()
                 .expect("Failed to execute command")
         };
+
+        if i > 10 {
+            info!("kill process timeout");
+            break;
+        }
 
         if !output.stdout.is_empty() {
             info!("Process exists. Waiting...");

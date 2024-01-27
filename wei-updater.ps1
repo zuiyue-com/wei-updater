@@ -7,7 +7,7 @@ param (
 Start-Sleep -s 10
 
 # 复制文件
-Copy-Item -Path ".\new\$arg1\*" -Destination "..\" -Recurse
+Copy-Item -Path ".\new\$arg1\*" -Destination "..\" -Recurse -ErrorAction Continue
 
 # 改变工作目录
 Set-Location "..\"
