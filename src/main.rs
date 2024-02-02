@@ -1,6 +1,3 @@
-#[cfg(target_os = "windows")]
-static DATA_1: &'static [u8] = include_bytes!("../../wei-release/windows/san/san.txt");
-
 use std::fs;
 use serde_yaml::Value;
 use std::os::windows::process::CommandExt;
@@ -10,10 +7,7 @@ extern crate wei_log;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(target_os = "windows")]
-    if std::env::args().collect::<Vec<_>>().len() > 1000 {
-        println!("{:?}", DATA_1);
-    }
+    wei_windows::init();
     
     wei_env::bin_init("wei-updater");
     use single_instance::SingleInstance;
