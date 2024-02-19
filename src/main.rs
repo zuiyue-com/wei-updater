@@ -545,8 +545,19 @@ fn kill_all() -> Result<(), Box<dyn std::error::Error>> {
 
     files.retain(|x| x.is_file());
 
+    #[cfg(target_os = "windows")] {
+        wei_run::psrun("wei-daemon-close.ps1", "")?;
+        wei_run::kill("wei.exe")?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    wei_run::kill("wei")?;
+
     for f in files {
         let name = f.file_name().unwrap().to_str().unwrap();
+        if name.starts_with("wei-updater") {
+            continue;
+        }
         if name.starts_with("wei-") {
             info!("kill: {}", name);
             wei_run::kill(name).unwrap();
@@ -554,20 +565,21 @@ fn kill_all() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+
 }
 
 fn kill() -> Result<(), Box<dyn std::error::Error>> {
     kill_all()?;
     // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
-    let content = std::fs::read_to_string("./kill.dat")?;
-    let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
-    if let serde_yaml::Value::Mapping(m) = map.clone() {
-        for (k, _) in m {
-            let name = k.as_str().unwrap();
-            info!("kill: {}", name);
-            wei_run::kill(name).unwrap();
-        }
-    }
+    // let content = std::fs::read_to_string("./kill.dat")?;
+    // let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
+    // if let serde_yaml::Value::Mapping(m) = map.clone() {
+    //     for (k, _) in m {
+    //         let name = k.as_str().unwrap();
+    //         info!("kill: {}", name);
+    //         wei_run::kill(name).unwrap();
+    //     }
+    // }
     Ok(())
 }
 
