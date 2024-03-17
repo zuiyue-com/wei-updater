@@ -1,5 +1,7 @@
 use std::fs;
 use serde_yaml::Value;
+
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
 #[macro_use]
@@ -11,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     wei_env::bin_init("wei-updater");
     use single_instance::SingleInstance;
-    let instance = SingleInstance::new("wei-updater").unwrap();
+    let instance = wei_single::SingleInstance::new("wei-updater").unwrap();
     if !instance.is_single() {     
         std::process::exit(1);
     };
@@ -392,7 +394,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
     
     #[cfg(not(target_os = "windows"))]
-    copy_and_run(online_version)?;
+    copy_and_run(online_version.clone())?;
 
     // 清除旧版本，保留online_version
     clear_version(online_version.clone())?;
@@ -617,9 +619,12 @@ fn check_process(exclude: &str) {
 }
 
 #[cfg(not(target_os = "windows"))]
+use std::io;
+#[cfg(not(target_os = "windows"))]
+use std::path::Path;
+#[cfg(not(target_os = "windows"))]
 fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
-    use std::io;
-    use std::path::Path;
+    
     let from = from.as_ref();
     let to = to.as_ref();
     
