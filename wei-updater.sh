@@ -3,14 +3,13 @@
 # 参数
 arg1=$1
 
+killall wei
+
 # 暂停 10 秒
 sleep 5
 
 # 复制文件
-cp -r "./new/$arg1/"* "../"
-
-# 改变工作目录
-cd ".."
+cp -r "$2/data/new/$1/"* "$2/"
 
 # 运行
-./wei &
+systemctl restart wei

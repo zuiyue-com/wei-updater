@@ -377,8 +377,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 关闭kill.dat里面的进程
-    kill()?;
-    check_process("wei-updater");
+    #[cfg(target_os = "windows")]
+    {
+        kill()?;
+        check_process("wei-updater");
+    }
     
     // 等待wei-task关闭，才进一步操作
     // loop {
@@ -390,6 +393,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         // std::thread::sleep(std::time::Duration::from_secs(10));
     // }
 
+    // 清除旧版本，保留online_version
+    clear_version(online_version.clone())?;
+
     info!("run copy files");
     #[cfg(target_os = "windows")]
     std::process::Command::new("powershell")
@@ -399,14 +405,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
     
     #[cfg(not(target_os = "windows"))]
-    std::process::Command::new("sh")
-        .arg("-c")
-        .arg("./wei-updater.sh")
-        .arg(&online_version.clone())
-        .spawn()?;
+    {
+        //获取当前目录上一层的目录
+        // let current_dir = std::env::current_dir()?;
+        // let current_dir = current_dir.parent().unwrap();
+        // let current_dir = current_dir.display().to_string();
 
-    // 清除旧版本，保留online_version
-    clear_version(online_version.clone())?;
+        // std::process::Command::new("sh")
+        // .arg("-c")
+        // .arg("./wei-updater.sh")
+        // .arg(&online_version.clone())
+        // .arg(current_dir)
+        // .spawn()?;
+
+        copy_and_run(online_version.clone())?;
+    }
+
 
     info!("updater success!");
     
@@ -519,24 +533,30 @@ async fn decompress(online_version: String) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-// #[cfg(not(target_os = "windows"))]
-// fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
-//     // 复制new / online-version 到当前目录
-//     info!("copy new file to main dir");
-//     let new = "new/".to_owned() + online_version.as_str();
-//     match copy_files(new, "../".to_string()) {
-//         Ok(_) => {},
-//         Err(e) => {
-//             info!("copy_files error: {}", e);
-//         }
-//     };
+#[cfg(not(target_os = "windows"))]
+fn copy_and_run(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
+    // 复制new / online-version 到当前目录
+    info!("copy new file to main dir");
 
-//     // 打印工作目录
-//     std::env::set_current_dir("../")?;
+    let current_dir = std::env::current_dir()?;
+    let current_dir = current_dir.parent().unwrap();
+    let current_dir = current_dir.display().to_string();
 
-//     // wei_run::run_async("wei", vec![])?;
-//     Ok(())
-// }
+    let new = current_dir.clone() + "/data/new/" + online_version.as_str();
+    match copy_files(new, current_dir + "/") {
+        Ok(_) => {},
+        Err(e) => {
+            info!("copy_files error: {}", e);
+        }
+    };
+
+    wei_run::command("systemctl", vec!["restart", "wei.service"])?;
+
+    // 打印工作目录
+    // std::env::set_current_dir("../")?;
+    // wei_run::run_async("wei", vec![])?;
+    Ok(())
+}
 
 fn check_status(online_version: String) -> Result<(), Box<dyn std::error::Error>> {
     if wei_env::status() == "0" {
@@ -603,6 +623,7 @@ fn kill() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 fn check_process(exclude: &str) {
     let mut i = 0;
     loop {
@@ -636,37 +657,39 @@ fn check_process(exclude: &str) {
     }
 }
 
-// #[cfg(not(target_os = "windows"))] 
-// use std::io;
-// use std::path::Path;
-// fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
+#[cfg(not(target_os = "windows"))] 
+use std::io;
+use std::path::Path;
+fn copy_files<P: AsRef<Path>>(from: P, to: P) -> io::Result<()> {
     
-//     let from = from.as_ref();
-//     let to = to.as_ref();
+    let from = from.as_ref();
+    let to = to.as_ref();
     
-//     if !to.exists() {
-//         match fs::create_dir_all(&to) {
-//             Ok(_) => {},
-//             Err(e) => {
-//                 error!("create dir error: {}", e);
-//             }
-//         }
-//     }
+    if !to.exists() {
+        match fs::create_dir_all(&to) {
+            Ok(_) => {},
+            Err(e) => {
+                error!("create dir error: {}", e);
+            }
+        }
+    }
 
-//     for entry in fs::read_dir(from)? {
-//         let entry = entry?;
-//         let path = entry.path();
-//         if path.is_file() {
-//             match fs::copy(&path, to.join(path.file_name().unwrap())) {
-//                 Ok(_) => {},
-//                 Err(e) => {
-//                     info!("copy file error: {}, path: {}, to: {}", e, path.display(), to.display());
-//                 }
-//             }
-//         } else if path.is_dir() {
-//             copy_files(&path, &to.join(path.file_name().unwrap()))?;
-//         }
-//     }
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            let dest = to.join(path.file_name().unwrap());
+            fs::remove_file(&dest).unwrap_or(());
+            match fs::copy(&path, dest) {
+                Ok(_) => {},
+                Err(e) => {
+                    info!("copy file error: {}, path: {}, to: {}", e, path.display(), to.display());
+                }
+            }
+        } else if path.is_dir() {
+            copy_files(&path, &to.join(path.file_name().unwrap()))?;
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
