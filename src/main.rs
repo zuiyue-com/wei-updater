@@ -123,7 +123,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let url = format!("{}{}/{}/version.dat", download_url, product, os);
     info!("{}", url);
-    let local_version = fs::read_to_string("./version.dat").unwrap();
+    let local_version = fs::read_to_string("./version.dat").unwrap().trim().to_string();
     let mut online_version;
 
     loop {
@@ -139,6 +139,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         info!("online_version: {}", online_version);
         info!("local_version: {}", local_version);
+
+        online_version = online_version.trim().to_string();
 
         let online_version_num = parse_version(&online_version)?;
         let local_version_num = parse_version(&local_version)?;
@@ -397,7 +399,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
     
     #[cfg(not(target_os = "windows"))]
-    wei_run::command("sh", vec!["wei-updater.sh", &online_version.clone()])?;
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg("./wei-updater.sh")
+        .arg(&online_version.clone())
+        .spawn()?;
 
     // 清除旧版本，保留online_version
     clear_version(online_version.clone())?;
@@ -610,7 +616,7 @@ fn check_process(exclude: &str) {
         } else {
             std::process::Command::new("bash")
                 .arg("-c")
-                .arg(format!("pgrep -f 'wei' || pgrep -f 'wei-' | grep -v {}", exclude))
+                .arg(format!("pgrep -l 'wei' | grep -v {}", exclude))
                 .output()
                 .expect("Failed to execute command")
         };
