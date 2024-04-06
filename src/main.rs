@@ -367,7 +367,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // 升级期间要有一个提示框提示用户，正在升级。
-    if os == "windows" {
+    #[cfg(target_os = "windows")]
+    {
         use winrt_notification::{Duration, Sound, Toast};
         Toast::new(Toast::POWERSHELL_APP_ID)
         .title(&name)
