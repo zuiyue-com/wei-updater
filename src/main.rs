@@ -191,6 +191,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         wei_run::run("wei-download", vec!["delete", gid])?;
         std::process::exit(0);
     }
+
+    info!("stop all download");
+    wei_run::run("wei-download", vec!["stop_all"])?;
     
     info!("add torrent to wei-download");
     let gid = match wei_run::run("wei-download", vec!["add", &torrent, path.display().to_string().as_str()]) {
@@ -241,6 +244,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::json!({"code": 500}).to_string()
             }
         };
+
+        info!("download: {}", cmd);
 
         let mut finished = false;
 
@@ -360,15 +365,15 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // 下载完成后，写入 .wei/status.dat 0 重启所有daemon
     wei_env::stop();
 
-    // 读取name.dat,里面是一个字符串
-    let name = match std::fs::read_to_string("name.dat") {
-        Ok(c) => c,
-        Err(_) => "Wei".to_string()
-    };
-
     // 升级期间要有一个提示框提示用户，正在升级。
     #[cfg(target_os = "windows")]
     {
+        // 读取name.dat,里面是一个字符串
+        let name = match std::fs::read_to_string("name.dat") {
+            Ok(c) => c,
+            Err(_) => "Wei".to_string()
+        };
+        
         use winrt_notification::{Duration, Sound, Toast};
         Toast::new(Toast::POWERSHELL_APP_ID)
         .title(&name)
@@ -610,17 +615,19 @@ fn kill_all() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn kill() -> Result<(), Box<dyn std::error::Error>> {
-    kill_all()?;
     // 读取 kill.dat, 这个是一个serde_yml的列表。循环读取他，并关闭对应key的进程
-    // let content = std::fs::read_to_string("./kill.dat")?;
-    // let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
-    // if let serde_yaml::Value::Mapping(m) = map.clone() {
-    //     for (k, _) in m {
-    //         let name = k.as_str().unwrap();
-    //         info!("kill: {}", name);
-    //         wei_run::kill(name).unwrap();
-    //     }
-    // }
+    let content = std::fs::read_to_string("./kill.dat")?;
+    let map: serde_yaml::Value = serde_yaml::from_str(&content)?;
+    if let serde_yaml::Value::Mapping(m) = map.clone() {
+        for (k, _) in m {
+            let name = k.as_str().unwrap();
+            info!("kill: {}", name);
+            wei_run::kill(name).unwrap();
+        }
+    }
+    
+    kill_all()?;
+    
     Ok(())
 }
 
