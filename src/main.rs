@@ -128,7 +128,19 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
 
-        online_version = reqwest::get(&url).await?.text().await?;
+        let client = reqwest::Client::builder()
+        .timeout(tokio::time::Duration::from_secs(30))
+        .build()?;
+
+        //online_version = client.get(&url).await?.text().await?;
+
+        online_version = match client.get(&url).send().await {
+            Ok(d) => d.text().await?,
+            Err(err) => {
+                info!("获取在线版本编号: {}", err);
+                local_version.clone()
+            }
+        };
 
         // online_version 的值 是 0.2.3
         // local_version 的值 是 0.2.5
@@ -486,7 +498,10 @@ pub async fn update_failed() -> Result<(), Box<dyn std::error::Error>> {
             "info": info
         });
 
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+        .timeout(tokio::time::Duration::from_secs(30))
+        .build()?;
+
         match client.post(&url).json(&post).send().await {
             Ok(_) => {},
             Err(err) => {
