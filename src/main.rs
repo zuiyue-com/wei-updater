@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 use serde_yaml::Value;
 
 #[cfg(target_os = "windows")]
@@ -419,7 +420,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     std::process::Command::new("powershell")
         .arg("-ExecutionPolicy").arg("Bypass")
         .arg("-File").arg("wei-updater.ps1")
-        .arg("-arg1").arg(online_version.clone())
+        .arg("-arg1").arg(&online_version)
         .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
     
     #[cfg(not(target_os = "windows"))]
@@ -586,7 +587,7 @@ fn check_status(online_version: String) -> Result<(), Box<dyn std::error::Error>
         std::process::Command::new("powershell")
             .arg("-ExecutionPolicy").arg("Bypass")
             .arg("-File").arg("wei-daemon-close.ps1")
-            .arg("-arg1").arg(online_version)
+            .arg("-arg1").arg(&online_version)
             .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW).spawn()?;
         
         info!("check_status online_version: {}", online_version);

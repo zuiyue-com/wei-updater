@@ -9,6 +9,10 @@ license = "MIT OR Apache-2.0"
 
 [profile.release]
 opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true
 
 [package.metadata.winres]
 OriginalFilename = "WEI-UPDATER.EXE"
